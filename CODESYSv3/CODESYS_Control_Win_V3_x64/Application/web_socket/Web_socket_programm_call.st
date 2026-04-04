@@ -15,7 +15,6 @@ VAR
 END_VAR
 
 // === IMPLEMENTATION ===
-
 // 1. Increment Watchdog for Browser (FROM PLC TO JS)
 IO.output.uiWatchdog_Outputs := IO.output.uiWatchdog_Outputs + 1;
 
