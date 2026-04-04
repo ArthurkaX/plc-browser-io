@@ -4,7 +4,12 @@ A high-performance bridge for interconnecting Web-based process simulations with
 
 ## 🎯 Project Goal
 
-The main objective is to provide a simple, lightweight, and extremely fast interface for simulating industrial processes. By running the "physics" or "process logic" in a web browser using JavaScript and connecting it to a real or virtual PLC, developers can test control algorithms without expensive hardware setups or complex simulation software.
+The main objective is to provide a simple, lightweight, and extremely fast interface for **rapid prototyping and simulation** of industrial processes. 
+
+**Why use this bridge?**
+- **Fast & Lightweight Prototyping:** Instead of buying and setting up heavy, expensive 3D physical modeling software, you can quickly sketch the physics of your object in a web browser (using standard JavaScript, Canvas, or SVG) with zero environment overhead.
+- **Effortless Debugging:** If you are developing control logic for a moderately complex object (e.g. an elevator, a sorting conveyor, or a complex PID heating tank), you can easily simulate its mechanics and sensors in the browser while the actual algorithms run on the real/virtual PLC.
+- **HIL (Hardware-in-the-Loop) Testing:** Test and refine your PLC logic securely against a virtual environment before commissioning the real equipment.
 
 ### Key Components
 
@@ -16,6 +21,25 @@ The main objective is to provide a simple, lightweight, and extremely fast inter
 ---
 
 ## 🚀 Core Concepts
+
+### Architecture Details
+
+```mermaid
+flowchart LR
+    subgraph Browser["Web Browser (UI & Physics)"]
+        JS["JavaScript Engine"]
+        UI["HTML5/Canvas Dashboard"]
+        JS <--> UI
+    end
+    
+    subgraph PLC["CODESYS PLC (Logic & Control)"]
+        WS["WebSocket Server (RFC 6455)"]
+        ST["Structured Text Logic"]
+        WS <--> ST
+    end
+    
+    JS <-->|"Full-Duplex WebSocket<br/>Raw Binary UInt8Array<br/>~10ms cycle"| WS
+```
 
 ### 1. The Binary "Memory Image"
 
@@ -65,10 +89,10 @@ The simulation driving the IO map approach:
 - `/CODESYSv3`: Implementation of the WebSocket server for CODESYS (V3.5).
   - `FB_WebSocket_Server`: The main block handling handshakes and framing.
   - `GVL_WebSocket`: Global variables for communication buffers.
-- `/.webpage`: The web-based frontend.
+  - `/.project/plc-browser-io.project`: Ready-to-use sample CODESYS project binary.
+- `/webpage`: The web-based frontend.
   - `index.html`: Dashboard for connection and monitoring.
   - `script.js`: WebSocket client logic and data handling.
-- `/.python`: Helper scripts for code generation and CI/CD.
 
 ---
 
@@ -106,7 +130,22 @@ The simulation driving the IO map approach:
     **Option C: Quick Start (Windows)**
     Simply double-click the `start.bat` file in the project root to open an interactive menu that finds and launches an available local server automatically!
 
-3.  **Connect**: Navigate to `http://localhost:3000` in your brower. The UI will automatically load `simulation_project.json` and attempt to connect to the PLC.
+3.  **Connect**: Navigate to `http://localhost:3000` in your browser. The UI will automatically load `simulation_project.json` and attempt to connect to the PLC.
+
+---
+
+## 🧪 Compatibility
+
+The current implementation has been successfully tested on:
+- **CODESYS**: V3.5 SP20 Patch 1 + (32-bit) *(CODESYS Control Win V3)*
+- **Web Client**: Mozilla Firefox
+
+---
+
+## 👨‍💻 Development
+
+The CODESYS source code contained in this repository is maintained in plain text (`.st` files) to allow proper version control with Git. 
+This synchronization between the plaintext source tree and the included binary project file (`CODESYSv3/.project/plc-browser-io.project`) was achieved using the [cds-text-sync](https://github.com/ArthurkaX/cds-text-sync) utility!
 
 ---
 
