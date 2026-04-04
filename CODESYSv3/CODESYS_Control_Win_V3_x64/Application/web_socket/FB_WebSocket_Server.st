@@ -39,6 +39,10 @@ VAR
 	stFrame      : ST_WS_Frame;
 	abFrameBuf   : ARRAY [0..1023] OF BYTE;
 	uiFrameLen   : UINT;
+	
+	abStreamBuf  : ARRAY [0..4095] OF BYTE;
+	uiStreamLen  : UINT;
+	uiParseOffset: UINT;
 
 	sClientKey   : STRING(40);
 	sAcceptKey   : STRING(40);
@@ -168,12 +172,24 @@ E_WS_State.HANDSHAKE_SEND:
 E_WS_State.WS_CONNECTED:
 	xHandshakeOK := TRUE;
 	// Main loop for data exchange
-	// --- 1. RECEIVER (Multi-packet catchup) ---
-	FOR i := 1 TO 20 DO
-		fbRead(xEnable := TRUE, hConnection := fbConnection.hConnection, szSize := SIZEOF(abRecvBuf), pData := ADR(abRecvBuf));
-		IF fbRead.xReady AND fbRead.szCount > 0 THEN
-			uiRecvLen := TO_UINT(fbRead.szCount);
-			IF FC_WS_ParseFrame(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen, stFrame := stFrame) THEN
+	// --- 1. RECEIVER (Multi-packet catchup & stream buffering) ---
+	// Read into abRecvBuf
+	fbRead(xEnable := TRUE, hConnection := fbConnection.hConnection, szSize := SIZEOF(abRecvBuf), pData := ADR(abRecvBuf));
+	IF fbRead.xReady AND fbRead.szCount > 0 THEN
+		uiRecvLen := TO_UINT(fbRead.szCount);
+		
+		// Append to stream buffer
+		FOR j := 0 TO UINT_TO_INT(uiRecvLen) - 1 DO
+			IF uiStreamLen < 4096 THEN
+				abStreamBuf[uiStreamLen] := abRecvBuf[j];
+				uiStreamLen := uiStreamLen + 1;
+			END_IF;
+		END_FOR;
+		
+		// Parse all complete frames from the stream buffer
+		uiParseOffset := 0;
+		WHILE uiParseOffset < uiStreamLen DO
+			IF FC_WS_ParseFrame(pData := ADR(abStreamBuf[uiParseOffset]), uiDataLen := uiStreamLen - uiParseOffset, stFrame := stFrame) THEN
 				CASE stFrame.eOpcode OF
 					E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
 						IF pRecvData <> 0 AND uiRecvSize > 0 THEN
@@ -187,13 +203,29 @@ E_WS_State.WS_CONNECTED:
 						sError := 'Client requested close';
 						eStep := E_WS_State.WS_SEND_CLOSE;
 				END_CASE;
+				
+				IF stFrame.uiTotalLen > 0 THEN
+					uiParseOffset := uiParseOffset + stFrame.uiTotalLen;
+				ELSE
+					EXIT;
+				END_IF;
+			ELSE
+				EXIT; // Partial frame, wait for more data
 			END_IF;
-			fbRead(xEnable := FALSE);
-		ELSE
-			IF fbRead.xError THEN eStep := E_WS_State.CLOSING; END_IF;
-			EXIT; 
+		END_WHILE;
+		
+		// Shift remaining unparsed bytes to the beginning
+		IF uiParseOffset > 0 THEN
+			uiStreamLen := uiStreamLen - uiParseOffset;
+			FOR j := 0 TO UINT_TO_INT(uiStreamLen) - 1 DO
+				abStreamBuf[j] := abStreamBuf[uiParseOffset + INT_TO_UINT(j)];
+			END_FOR;
 		END_IF;
-	END_FOR;
+		
+		fbRead(xEnable := FALSE);
+	ELSIF fbRead.xError THEN
+		eStep := E_WS_State.CLOSING;
+	END_IF;
 
 	// --- 2. TRANSMITTER ---
 	IF xSendPending AND NOT fbWrite.xBusy THEN
