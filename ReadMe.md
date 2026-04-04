@@ -5,7 +5,7 @@ A high-performance bridge for interconnecting Web-based process simulations with
 **Live Demo:** [https://arthurkax.github.io/plc-browser-io/](https://arthurkax.github.io/plc-browser-io/)
 
 <div align="center">
-  <video src="video/Preview.mp4" autoplay loop muted playsinline width="100%"></video>
+  ![Preview](video/Preview.mp4)
 </div>
 
 > [!IMPORTANT]
