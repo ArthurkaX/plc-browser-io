@@ -1,4 +1,17 @@
-PROGRAM Web_socket_programm_call
+// ==============================================================================
+// EXAMPLE INTEGRATION: WebSocket Application Data Sync
+// ==============================================================================
+// This program demonstrates how to link the generic FB_WebSocket_Server to your
+// specific project data (in this case, the `IO` global variable list).
+// 
+// Instructions for users:
+// 1. Copy the `WebSocket_Core` folder to your project.
+// 2. Adjust or rewrite this program (e.g. PRG_App_WebSocket) to point
+//    the pSendData and pRecvData pointers to your own data structures.
+// 3. Implement your own flow control (e.g. 10ms cyclic send and Watchdog).
+// ==============================================================================
+
+PROGRAM PRG_App_WebSocket
 VAR
 	fbWS          : FB_WebSocket_Server;
 	xStart        : BOOL := TRUE;          // Set TRUE to start server
