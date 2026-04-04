@@ -7,6 +7,7 @@ A high-performance bridge for interconnecting Web-based process simulations with
 The main objective is to provide a simple, lightweight, and extremely fast interface for simulating industrial processes. By running the "physics" or "process logic" in a web browser using JavaScript and connecting it to a real or virtual PLC, developers can test control algorithms without expensive hardware setups or complex simulation software.
 
 ### Key Components
+
 - **Web Simulation Engine**: Vanilla JS/HTML5 for process visualization and logic.
 - **Communication Layer**: RFC 6455 WebSocket Server implemented directly inside the PLC.
 - **Data Exchange**: Binary-packed byte arrays for maximum efficiency and predictable latency.
@@ -17,6 +18,7 @@ The main objective is to provide a simple, lightweight, and extremely fast inter
 ## 🚀 Core Concepts
 
 ### 1. The Binary "Memory Image"
+
 Instead of high-overhead JSON or XML, data is exchanged as a raw `Uint8Array`. Both sides (JS and PLC) agree on a memory map.
 
 - **Data Layout**: Signals are packed sequentially into bytes.
@@ -26,13 +28,16 @@ Instead of high-overhead JSON or XML, data is exchanged as a raw `Uint8Array`. B
 - **PLC side**: Accesses data via pointers or overlays (`UNION` / `STRUCT` with `AT` addresses).
 
 ### 2. High-Speed Synchronization
-*   **Target Latency**: 10ms update rate.
-*   **Frequency Control**: Adjustable polling/push interval on both sides.
-*   **Bidirectional**: Full-duplex communication allows simultaneous reading of inputs and writing of outputs.
-*   **Performance**: Binary frames minimize CPU usage on the PLC side, leaving more cycles for control logic.
+
+- **Target Latency**: 10ms update rate.
+- **Frequency Control**: Adjustable polling/push interval on both sides.
+- **Bidirectional**: Full-duplex communication allows simultaneous reading of inputs and writing of outputs.
+- **Performance**: Binary frames minimize CPU usage on the PLC side, leaving more cycles for control logic.
 
 ### 3. "JS-First" IO Declaration & ST Generation
+
 The simulation driving the IO map approach:
+
 1.  **Define** sensors/actuators in JavaScript (e.g., `Sim.addIO('StartButton', 'BIT')`).
 2.  **Simulation logic** interacts with these variables through bitmasks or a custom `IOHandler`.
 3.  **Generate** button: Produces a Structured Text (ST) `STRUCT` where bits are packed correctly:
@@ -71,9 +76,9 @@ The simulation driving the IO map approach:
 
 - [x] CODESYS V3.5 WebSocket Server (Baseline)
 - [x] Basic Web Client interface
-- [ ] **Binary Packing Engine**: Implementation of the `BitPacked` protocol for signals.
-- [ ] **10ms Cycle Optimization**: Benchmarking and jitter reduction.
-- [ ] **ST Code Generator**: Exporting IO maps from JS to CODESYS Structured Text.
+- [x] **Binary Packing Engine**: Implementation of the `BitPacked` protocol for signals.
+- [x] **10ms Cycle Optimization**: Benchmarking and jitter reduction.
+- [x] **ST Code Generator**: Exporting IO maps from JS to CODESYS Structured Text.
 - [ ] **TIA Portal Support**: Porting the WebSocket server to Siemens S7-1500 (LHTTP).
 
 ---
@@ -86,4 +91,4 @@ The simulation driving the IO map approach:
 
 ---
 
-*“Bridging the gap between modern web technologies and industrial automation.”*
+_“Bridging the gap between modern web technologies and industrial automation.”_
