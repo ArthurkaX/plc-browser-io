@@ -92,13 +92,43 @@ const DashboardUI = {
             const btn = document.getElementById('btn-ws-connect');
             btn.innerText = '🟩 CONNECTED'; 
             btn.style.opacity = '1';
+            btn.style.background = 'var(--success)';
         });
         PLC.onDisconnect(() => {
             const btn = document.getElementById('btn-ws-connect');
             btn.innerText = '🚀 CONNECT SIMULATION'; 
             btn.style.opacity = '1';
+            btn.style.background = '';
         });
         PLC.onUpdate(() => this.updateMonitorValues());
+        
+        // Auto-load project if exists
+        this.loadDefaultConfig();
+    },
+
+    async loadDefaultConfig() {
+        try {
+            const res = await fetch('config/simulation_project.json');
+            if (res.ok) {
+                const text = await res.text();
+                if (PLC.loadConfig(text)) {
+                    this.loadFormFromConfig();
+                    this.renderEditors();
+                    this.renderMonitor();
+                    console.log("[PLC Browser] Auto-loaded config/simulation_project.json");
+                    
+                    // Auto-connect after loading
+                    const btn = document.getElementById('btn-ws-connect');
+                    btn.innerText = '⏳ CONNECTING...'; 
+                    btn.style.opacity = '0.5';
+                    PLC.connect();
+                }
+            } else {
+                console.log("[PLC Browser] No default config found (status " + res.status + ").");
+            }
+        } catch (err) {
+            console.log("[PLC Browser] Auto-load skipped (fetch error or CORS).");
+        }
     },
 
     loadFormFromConfig() {

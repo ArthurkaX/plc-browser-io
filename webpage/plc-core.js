@@ -126,14 +126,25 @@ class IOHandler {
     }
 
     sortSignals() {
-        const watchdog = this.signals[0];
-        const rest = this.signals.slice(1);
+        const wdIndex = this.signals.findIndex(s => s.name.startsWith('uiWatchdog'));
+        let watchdog = null;
+        let rest = this.signals;
+        
+        if (wdIndex !== -1) {
+            watchdog = this.signals[wdIndex];
+            rest = this.signals.filter((_, i) => i !== wdIndex);
+        } else {
+            // Auto-restore watchdog if it was accidentally missing from JSON
+            watchdog = { name: `uiWatchdog_${this.prefix}`, type: 'BYTE', value: 0 };
+        }
+
         rest.sort((a, b) => {
-            const alignA = this.types[a.type].align || 1;
-            const alignB = this.types[b.type].align || 1;
+            const alignA = this.types[a.type]?.align || 1;
+            const alignB = this.types[b.type]?.align || 1;
             if (alignA !== alignB) return alignB - alignA;
             return 0;
         });
+        
         this.signals = [watchdog, ...rest];
     }
 
