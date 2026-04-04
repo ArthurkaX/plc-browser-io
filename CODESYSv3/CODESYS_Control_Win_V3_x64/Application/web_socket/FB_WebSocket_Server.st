@@ -47,7 +47,7 @@ VAR
 
 	abPayloadOut : ARRAY [0..31] OF BYTE;
 
-	i     : INT;
+	i, j : INT;
 	dwOff : DWORD;
 	pByte : POINTER TO BYTE;
 	pStr  : POINTER TO BYTE;
@@ -232,37 +232,42 @@ END_CASE;
 IF eStep = E_WS_State.WS_CONNECTED THEN
 	
 	// --- 1. RECEIVER ---
-	fbRead(
-		xEnable := TRUE,
-		hConnection := fbConnection.hConnection,
-		szSize := SIZEOF(abRecvBuf),
-		pData := ADR(abRecvBuf)
-	);
-	
-	IF fbRead.xReady AND fbRead.szCount > 0 THEN
-		uiRecvLen := TO_UINT(fbRead.szCount);
+	// Loop to clear all pending data in the TCP buffer during one PLC scan
+	FOR i := 1 TO 10 DO // Allow up to 10 packets per cycle to clear backlog
+		fbRead(
+			xEnable := TRUE,
+			hConnection := fbConnection.hConnection,
+			szSize := SIZEOF(abRecvBuf),
+			pData := ADR(abRecvBuf)
+		);
 		
-		IF FC_WS_ParseFrame(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen, stFrame := stFrame) THEN
-			CASE stFrame.eOpcode OF
-				E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
-					IF pRecvData <> 0 AND uiRecvSize > 0 THEN
-						uiReceivedLen := MIN(UDINT_TO_UINT(stFrame.udiPayloadLen), uiRecvSize);
-						FOR i := 0 TO UINT_TO_INT(uiReceivedLen) - 1 DO
-							pRecvData[i] := stFrame.abPayload[i];
-						END_FOR;
-						xNewDataReceived := TRUE;
-					END_IF;
-					
-				E_WS_Opcode.CLOSE:
-					sError := 'Client requested close';
-					LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, Message:= 'WS Client Disconnected');
-					eStep := E_WS_State.WS_SEND_CLOSE;
-					
-				E_WS_Opcode.PING:
-					// Handled
-			END_CASE;
+		IF fbRead.xReady AND fbRead.szCount > 0 THEN
+			uiRecvLen := TO_UINT(fbRead.szCount);
+			IF FC_WS_ParseFrame(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen, stFrame := stFrame) THEN
+				CASE stFrame.eOpcode OF
+					E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
+						IF pRecvData <> 0 AND uiRecvSize > 0 THEN
+							uiReceivedLen := MIN(UDINT_TO_UINT(stFrame.udiPayloadLen), uiRecvSize);
+							FOR j := 0 TO UINT_TO_INT(uiReceivedLen) - 1 DO
+								pRecvData[j] := stFrame.abPayload[j];
+							END_FOR;
+							xNewDataReceived := TRUE;
+						END_IF;
+						
+					E_WS_Opcode.CLOSE:
+						sError := 'Client requested close';
+						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, Message:= 'WS Client Disconnected');
+						eStep := E_WS_State.WS_SEND_CLOSE;
+				END_CASE;
+			END_IF;
+			
+			fbRead(xEnable := FALSE); // Reset for next iteration in this cycle
+		ELSE
+			EXIT; // No more data to read this cycle
 		END_IF;
-	ELSIF fbRead.xError THEN
+	END_FOR;
+	
+	IF fbRead.xError THEN
 		sError := 'Read error';
 		eStep := E_WS_State.CLOSING;
 	END_IF;
@@ -278,8 +283,8 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 				abOutBuf := abFrameBuf
 			);
 			
-			FOR i := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
-				abSendBuf[i] := abFrameBuf[i];
+			FOR j := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
+				abSendBuf[j] := abFrameBuf[j];
 			END_FOR;
 			uiSendLen := uiFrameLen;
 			
