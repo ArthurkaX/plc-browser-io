@@ -47,7 +47,7 @@ VAR
 
 	abPayloadOut : ARRAY [0..31] OF BYTE;
 
-	i, j : INT;
+	i, j  : INT;
 	dwOff : DWORD;
 	pByte : POINTER TO BYTE;
 	pStr  : POINTER TO BYTE;
@@ -59,7 +59,7 @@ VAR
 END_VAR
 
 // === IMPLEMENTATION ===
-// ALWAYS call maintenance blocks if server is starting or running
+// Maintenance blocks
 IF eStep <> E_WS_State.IDLE THEN
 	fbServer(xEnable := TRUE, ipAddr := ipAddr, uiPort := uiPort);
 	fbConnection(xEnable := TRUE, hServer := fbServer.hServer);
@@ -77,8 +77,9 @@ IF NOT xEnable AND eStep <> E_WS_State.IDLE AND eStep <> E_WS_State.CLOSING THEN
 	eStep := E_WS_State.WS_SEND_CLOSE;
 END_IF;
 
+xNewDataReceived := FALSE;
+
 // Global Reset Monitoring
-// Only monitor for DROPS during the actual handshake or when already connected
 IF eStep = E_WS_State.HANDSHAKE_READ OR 
    eStep = E_WS_State.HANDSHAKE_PARSE OR 
    eStep = E_WS_State.HANDSHAKE_SEND OR 
@@ -89,8 +90,6 @@ IF eStep = E_WS_State.HANDSHAKE_READ OR
 		eStep := E_WS_State.CLOSING;
 	END_IF;
 END_IF;
-
-xNewDataReceived := FALSE;
 
 CASE eStep OF
 
@@ -122,12 +121,7 @@ E_WS_State.CONN_WAITING:
 	END_IF;
 
 E_WS_State.HANDSHAKE_READ:
-	fbRead(
-		xEnable     := TRUE,
-		hConnection := fbConnection.hConnection,
-		szSize      := SIZEOF(abRecvBuf),
-		pData       := ADR(abRecvBuf)
-	);
+	fbRead(xEnable := TRUE, hConnection := fbConnection.hConnection, szSize := SIZEOF(abRecvBuf), pData := ADR(abRecvBuf));
 	IF fbRead.xReady AND fbRead.szCount > 0 THEN
 		uiRecvLen := TO_UINT(fbRead.szCount);
 		fbRead(xEnable := FALSE);
@@ -144,32 +138,24 @@ E_WS_State.HANDSHAKE_PARSE:
 		eStep := E_WS_State.CLOSING;
 	ELSE
 		sAcceptKey := FC_WS_BuildAcceptKey(sClientKey := sClientKey, xDebug := xDebug);
-		sResponse := 'HTTP/1.1 101 Switching Protocols$0D$0A';
-		sResponse := CONCAT(sResponse, 'Upgrade: websocket$0D$0A');
-		sResponse := CONCAT(sResponse, 'Connection: Upgrade$0D$0A');
-		sResponse := CONCAT(sResponse, 'Sec-WebSocket-Accept: ');
+		sResponse := 'HTTP/1.1 101 Switching Protocols$0D$0A Upgrade: websocket$0D$0A Connection: Upgrade$0D$0A Sec-WebSocket-Accept: ';
 		sResponse := CONCAT(sResponse, sAcceptKey);
 		sResponse := CONCAT(sResponse, '$0D$0A$0D$0A');
 		
 		uiResponseLen := INT_TO_UINT(LEN(sResponse));
 		pStr := ADR(sResponse);
-		FOR i := 0 TO UINT_TO_INT(uiResponseLen) - 1 DO
-			abSendBuf[i] := pStr[i];
+		FOR j := 0 TO UINT_TO_INT(uiResponseLen) - 1 DO
+			abSendBuf[j] := pStr[j];
 		END_FOR;
 		uiSendLen := uiResponseLen;
 		eStep := E_WS_State.HANDSHAKE_SEND;
 	END_IF;
 
 E_WS_State.HANDSHAKE_SEND:
-	fbWrite(
-		xExecute    := TRUE,
-		hConnection := fbConnection.hConnection,
-		szSize      := TO_UDINT(uiSendLen),
-		pData       := ADR(abSendBuf)
-	);
+	fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiSendLen), pData := ADR(abSendBuf));
 	IF fbWrite.xDone THEN
 		fbWrite(xExecute := FALSE);
-		LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= 'WS Client Handshake OK');
+		LogComponent.Logger.LogADD(LogClass:= cmplog.LogClass.LOG_INFO, Component:= LogComponent.WS, Message:= 'WS Handshake successful');
 		eStep := E_WS_State.WS_CONNECTED;
 	ELSIF fbWrite.xError THEN
 		sError := 'Handshake send failed';
@@ -178,69 +164,10 @@ E_WS_State.HANDSHAKE_SEND:
 
 E_WS_State.WS_CONNECTED:
 	xHandshakeOK := TRUE;
-	IF NOT fbConnection.xActive THEN
-		sError := 'Connection lost';
-		eStep := E_WS_State.CLOSING;
-	END_IF;
-
-E_WS_State.WS_SEND_CLOSE:
-	uiFrameLen := FC_WS_BuildFrame(
-		eOpcode := E_WS_Opcode.CLOSE,
-		pPayload := ADR(abFrameBuf), 
-		uiPayloadLen := 0,
-		xFin := TRUE,
-		abOutBuf := abFrameBuf
-	);
-	
-	FOR i := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
-		abSendBuf[i] := abFrameBuf[i];
-	END_FOR;
-	uiSendLen := uiFrameLen;
-	
-	fbWrite(
-		xExecute := TRUE,
-		hConnection := fbConnection.hConnection,
-		szSize := TO_UDINT(uiSendLen),
-		pData := ADR(abSendBuf)
-	);
-	IF fbWrite.xDone THEN
-		fbWrite(xExecute := FALSE);
-		eStep := E_WS_State.CLOSING;
-	ELSIF fbWrite.xError THEN
-		fbWrite(xExecute := FALSE);
-		eStep := E_WS_State.CLOSING; 
-	END_IF;
-
-E_WS_State.CLOSING:
-	fbRead(xEnable := FALSE);
-	fbWrite(xExecute := FALSE);
-	fbConnection(xEnable := FALSE);
-	fbServer(xEnable := FALSE);
-	eStep := E_WS_State.IDLE;
-
-E_WS_State.ERROR:
-	xRunning := FALSE;
-	IF NOT xEnable THEN
-		eStep := E_WS_State.IDLE;
-	END_IF;
-
-END_CASE;
-
-// ==================================================
-// FULL-DUPLEX DATA EXCHANGE (Runs when connected)
-// ==================================================
-IF eStep = E_WS_State.WS_CONNECTED THEN
-	
-	// --- 1. RECEIVER ---
-	// Loop to clear all pending data in the TCP buffer during one PLC scan
-	FOR i := 1 TO 10 DO // Allow up to 10 packets per cycle to clear backlog
-		fbRead(
-			xEnable := TRUE,
-			hConnection := fbConnection.hConnection,
-			szSize := SIZEOF(abRecvBuf),
-			pData := ADR(abRecvBuf)
-		);
-		
+	// Main loop for data exchange
+	// --- 1. RECEIVER (Multi-packet catchup) ---
+	FOR i := 1 TO 20 DO
+		fbRead(xEnable := TRUE, hConnection := fbConnection.hConnection, szSize := SIZEOF(abRecvBuf), pData := ADR(abRecvBuf));
 		IF fbRead.xReady AND fbRead.szCount > 0 THEN
 			uiRecvLen := TO_UINT(fbRead.szCount);
 			IF FC_WS_ParseFrame(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen, stFrame := stFrame) THEN
@@ -253,54 +180,58 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 							END_FOR;
 							xNewDataReceived := TRUE;
 						END_IF;
-						
 					E_WS_Opcode.CLOSE:
 						sError := 'Client requested close';
-						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, Message:= 'WS Client Disconnected');
 						eStep := E_WS_State.WS_SEND_CLOSE;
 				END_CASE;
 			END_IF;
-			
-			fbRead(xEnable := FALSE); // Reset for next iteration in this cycle
+			fbRead(xEnable := FALSE);
 		ELSE
-			EXIT; // No more data to read this cycle
+			IF fbRead.xError THEN eStep := E_WS_State.CLOSING; END_IF;
+			EXIT; 
 		END_IF;
 	END_FOR;
-	
-	IF fbRead.xError THEN
-		sError := 'Read error';
-		eStep := E_WS_State.CLOSING;
-	END_IF;
 
 	// --- 2. TRANSMITTER ---
 	IF xSendPending AND NOT fbWrite.xBusy THEN
 		IF pSendData <> 0 AND uiSendSize > 0 THEN
-			uiFrameLen := FC_WS_BuildFrame(
-				eOpcode := E_WS_Opcode.BINARY,
-				pPayload := pSendData,
-				uiPayloadLen := uiSendSize,
-				xFin := TRUE,
-				abOutBuf := abFrameBuf
-			);
-			
+			uiFrameLen := FC_WS_BuildFrame(eOpcode:= E_WS_Opcode.BINARY, pPayload:= pSendData, uiPayloadLen:= uiSendSize, xFin:= TRUE, abOutBuf:= abFrameBuf);
 			FOR j := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
 				abSendBuf[j] := abFrameBuf[j];
 			END_FOR;
-			uiSendLen := uiFrameLen;
-			
-			fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiSendLen), pData := ADR(abSendBuf));
+			fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiFrameLen), pData := ADR(abSendBuf));
 			xSendPending := FALSE;
 		ELSE
-			xSendPending := FALSE; 
+			xSendPending := FALSE;
 		END_IF;
-			
 	ELSIF fbWrite.xDone OR fbWrite.xError THEN
 		fbWrite(xExecute := FALSE);
 	ELSE
 		fbWrite();
 	END_IF;
 
-END_IF;
+E_WS_State.WS_SEND_CLOSE:
+	uiFrameLen := FC_WS_BuildFrame(eOpcode := E_WS_Opcode.CLOSE, pPayload := ADR(abFrameBuf), uiPayloadLen := 0, xFin := TRUE, abOutBuf := abFrameBuf);
+	FOR j := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO abSendBuf[j] := abFrameBuf[j]; END_FOR;
+	fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiFrameLen), pData := ADR(abSendBuf));
+	IF fbWrite.xDone OR fbWrite.xError THEN
+		fbWrite(xExecute := FALSE);
+		eStep := E_WS_State.CLOSING;
+	END_IF;
+
+E_WS_State.CLOSING:
+	fbRead(xEnable := FALSE);
+	fbWrite(xExecute := FALSE);
+	fbConnection(xEnable := FALSE);
+	fbServer(xEnable := FALSE);
+	LogComponent.Logger.LogADD(LogClass:= cmplog.LogClass.LOG_INFO, Component:= LogComponent.WS, Message:= 'WS Connection Closed');
+	eStep := E_WS_State.IDLE;
+
+E_WS_State.ERROR:
+	xRunning := FALSE;
+	IF NOT xEnable THEN eStep := E_WS_State.IDLE; END_IF;
+
+END_CASE;
 
 eState := eStep;
 GVL_WebSocket.sDebugInfo := CONCAT('Step: ', TO_STRING(eStep));
