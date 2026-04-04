@@ -142,7 +142,7 @@ label {
     gap: 0.75rem;
 }
 
-input[type="text"] {
+input[type="text"], input[type="number"] {
     flex: 1;
     background: rgba(0,0,0,0.2);
     border: 1px solid var(--border);
@@ -154,7 +154,7 @@ input[type="text"] {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-input[type="text"]:focus {
+input[type="text"]:focus, input[type="number"]:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 15px rgba(34, 211, 238, 0.1);
@@ -281,4 +281,208 @@ code {
     .display-box.outgoing {
         grid-column: span 1;
     }
+}
+
+/* IO Configurator Section */
+.io-config-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.io-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+select#signal-type {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: var(--text-main);
+    font-family: inherit;
+    outline: none;
+}
+
+.st-preview-container {
+    position: relative;
+    background: rgba(0,0,0,0.3);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+}
+
+.code-box {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--success);
+    white-space: pre-wrap;
+    line-height: 1.5;
+}
+
+.copy-btn {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: rgba(167, 139, 250, 0.1);
+    color: var(--secondary);
+    border: 1px solid rgba(167, 139, 250, 0.2);
+    padding: 0.4rem 0.8rem;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+    background: rgba(167, 139, 250, 0.2);
+    color: var(--text-main);
+}
+
+/* Modal Dashboard Styles */
+.modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    transition: opacity 0.3s ease;
+}
+
+.modal.hidden { opacity: 0; pointer-events: none; }
+
+.modal-content {
+    width: 90%;
+    max-width: 900px;
+    height: 85vh;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 2rem;
+    cursor: pointer;
+}
+
+.modal-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tab-link {
+    padding: 0.75rem 1.25rem;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-link.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem 0;
+}
+
+.tab-content.active { display: flex; flex-direction: column; }
+
+.io-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.io-actions {
+    display: flex;
+    gap: 1rem;
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-dark);
+    padding: 1rem 0;
+}
+
+.debug-monitor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+}
+
+.monitor-column h4 {
+    margin-bottom: 1rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.monitor-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.monitor-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 0.5rem;
+}
+
+.modal-footer {
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    position: relative;
+}
+
+.code-box-mini {
+    font-size: 0.7rem;
+    background: rgba(0,0,0,0.4);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    max-height: 150px;
+    overflow-y: auto;
+    color: var(--success);
+}
+
+.copy-btn-mini {
+    position: absolute;
+    top: 1.5rem;
+    right: 0.5rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.6rem;
+    background: var(--primary);
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }
