@@ -311,12 +311,14 @@ window.renderMonitor = () => {
     const renderList = (handler, containerId, isInput) => {
         const container = document.getElementById(containerId);
         if (!container) return;
-        container.innerHTML = ''; // Initial clear
+        container.innerHTML = '';
         
         handler.signals.forEach((sig, index) => {
             const div = document.createElement('div');
             div.className = 'monitor-item';
-            div.style = "display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);";
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
             
             const elementId = `mon-${handler.prefix}-${index}`;
             let inputHtml = '';
@@ -326,12 +328,11 @@ window.renderMonitor = () => {
                 onchange="window.updateSigValue('${handler.prefix}', ${index}, this.checked)">`;
             } else {
                 inputHtml = `<input type="text" id="${elementId}" ${isInput ? '' : 'disabled'} 
-                style="width:80px; padding: 0.1rem 0.3rem; font-size: 0.8rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff;"
                 oninput="window.updateSigValue('${handler.prefix}', ${index}, this.value)">`;
             }
 
             div.innerHTML = `
-                <label style="font-size:0.7rem; color: var(--text-muted);">${sig.name}</label>
+                <label>${sig.name}</label>
                 ${inputHtml}
             `;
             container.appendChild(div);

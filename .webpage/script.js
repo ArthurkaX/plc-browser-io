@@ -8,10 +8,14 @@ const SimulationEngine = {
     isConnected: false,
 
     async connect() {
-        const settings = window.getCommSettings();
-        if (this.socket) this.disconnect();
+        if (this.isConnecting || this.isConnected) return;
+        this.isConnecting = true;
         
-        console.log(`Connecting to ${settings.url}...`);
+        const btn = document.getElementById('btn-ws-connect');
+        if (btn) { btn.innerText = '⏳ CONNECTING...'; btn.style.opacity = '0.5'; }
+
+        const settings = window.getCommSettings();
+        this.disconnect();
         
         try {
             this.socket = new WebSocket(settings.url);
@@ -19,35 +23,40 @@ const SimulationEngine = {
 
             this.socket.onopen = () => {
                 this.isConnected = true;
-                console.log('✅ Simulation Connected');
+                this.isConnecting = false;
+                if (btn) { btn.innerText = '🟩 CONNECTED'; btn.style.background = 'var(--success)'; btn.style.opacity = '1'; }
                 this.startLoop(settings.txRate);
             };
 
             this.socket.onmessage = (event) => {
                 if (event.data instanceof ArrayBuffer) {
                     window.outputHandler.unpackPayload(event.data);
-                    window.updateMonitorValues(); // Property-only update
+                    window.updateMonitorValues();
                 }
             };
 
             this.socket.onclose = () => {
                 this.disconnect();
-                console.log('🔌 Simulation Disconnected');
             };
 
-            this.socket.onerror = (err) => {
-                console.error('❌ WebSocket Error:', err);
+            this.socket.onerror = () => {
                 this.disconnect();
             };
         } catch (e) {
-            console.error('Connection Exception:', e);
+            this.disconnect();
         }
     },
 
     disconnect() {
         this.isConnected = false;
+        this.isConnecting = false;
+        const btn = document.getElementById('btn-ws-connect');
+        if (btn) { btn.innerText = '🚀 CONNECT SIMULATION'; btn.style.background = ''; btn.style.opacity = '1'; }
+
         if (this.intervalId) clearInterval(this.intervalId);
         if (this.socket) {
+            this.socket.onclose = null;
+            this.socket.onerror = null;
             this.socket.close();
             this.socket = null;
         }

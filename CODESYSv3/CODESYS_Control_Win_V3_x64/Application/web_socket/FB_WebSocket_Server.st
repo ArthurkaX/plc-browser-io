@@ -77,6 +77,15 @@ IF NOT xEnable AND eStep <> E_WS_State.IDLE AND eStep <> E_WS_State.CLOSING THEN
 	eStep := E_WS_State.WS_SEND_CLOSE;
 END_IF;
 
+// Global Reset Monitoring
+IF eStep <> E_WS_State.IDLE AND eStep <> E_WS_State.SERVER_STARTING THEN
+	// If TCP connection drops or errors, reset immediately
+	IF NOT fbConnection.xActive OR fbConnection.xError THEN
+		sError := 'TCP Connection lost';
+		eStep := E_WS_State.CLOSING;
+	END_IF;
+END_IF;
+
 xNewDataReceived := FALSE;
 
 CASE eStep OF
