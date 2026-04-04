@@ -60,10 +60,6 @@ VAR
 	xEnableLast   : BOOL;
 	xSendPending  : BOOL;
 	sLogMsg       : STRING(255);
-	
-	// Temporary debug variables
-	uiFramesParsed : UINT;
-	uiDebugWD      : BYTE;
 END_VAR
 
 // === IMPLEMENTATION ===
@@ -192,11 +188,9 @@ E_WS_State.WS_CONNECTED:
 		
 		// Parse all complete frames from the stream buffer
 		uiParseOffset := 0;
-		uiFramesParsed := 0;
 		
 		WHILE uiParseOffset < uiStreamLen DO
 			IF FC_WS_ParseFrame(pData := ADR(abStreamBuf[uiParseOffset]), uiDataLen := uiStreamLen - uiParseOffset, stFrame := stFrame) THEN
-				uiFramesParsed := uiFramesParsed + 1;
 				
 				CASE stFrame.eOpcode OF
 					E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
@@ -205,8 +199,6 @@ E_WS_State.WS_CONNECTED:
 							FOR j := 0 TO UINT_TO_INT(uiReceivedLen) - 1 DO
 								pRecvData[j] := stFrame.abPayload[j];
 							END_FOR;
-							// Capture Watchdog value directly for logging (assuming offset 0 is Watchdog)
-							IF uiReceivedLen > 0 THEN uiDebugWD := stFrame.abPayload[0]; END_IF;
 							xNewDataReceived := TRUE;
 						END_IF;
 					E_WS_Opcode.CLOSE:
@@ -231,15 +223,6 @@ E_WS_State.WS_CONNECTED:
 				abStreamBuf[j] := abStreamBuf[uiParseOffset + INT_TO_UINT(j)];
 			END_FOR;
 		END_IF;
-		
-		sLogMsg := CONCAT('WS Rx: ', TO_STRING(uiRecvLen));
-		sLogMsg := CONCAT(sLogMsg, ' bytes | Frames: ');
-		sLogMsg := CONCAT(sLogMsg, TO_STRING(uiFramesParsed));
-		sLogMsg := CONCAT(sLogMsg, ' | WD: ');
-		sLogMsg := CONCAT(sLogMsg, TO_STRING(uiDebugWD));
-		sLogMsg := CONCAT(sLogMsg, ' | BufLen: ');
-		sLogMsg := CONCAT(sLogMsg, TO_STRING(uiStreamLen));
-		LogComponent.Logger.LogADD(LogClass:= cmplog.LogClass.LOG_INFO, Component:= LogComponent.WS, Message:= sLogMsg);
 		
 		fbRead(xEnable := FALSE);
 	ELSIF fbRead.xError THEN
