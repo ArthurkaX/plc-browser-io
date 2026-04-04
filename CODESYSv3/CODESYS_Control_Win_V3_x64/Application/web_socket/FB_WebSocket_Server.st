@@ -138,7 +138,10 @@ E_WS_State.HANDSHAKE_PARSE:
 		eStep := E_WS_State.CLOSING;
 	ELSE
 		sAcceptKey := FC_WS_BuildAcceptKey(sClientKey := sClientKey, xDebug := xDebug);
-		sResponse := 'HTTP/1.1 101 Switching Protocols$0D$0A Upgrade: websocket$0D$0A Connection: Upgrade$0D$0A Sec-WebSocket-Accept: ';
+		sResponse := 'HTTP/1.1 101 Switching Protocols$0D$0A';
+		sResponse := CONCAT(sResponse, 'Upgrade: websocket$0D$0A');
+		sResponse := CONCAT(sResponse, 'Connection: Upgrade$0D$0A');
+		sResponse := CONCAT(sResponse, 'Sec-WebSocket-Accept: ');
 		sResponse := CONCAT(sResponse, sAcceptKey);
 		sResponse := CONCAT(sResponse, '$0D$0A$0D$0A');
 		
