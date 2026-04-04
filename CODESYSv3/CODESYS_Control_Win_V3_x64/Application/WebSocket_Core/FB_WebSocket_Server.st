@@ -271,4 +271,3 @@ E_WS_State.ERROR:
 END_CASE;
 
 eState := eStep;
-GVL_WebSocket.sDebugInfo := CONCAT('Step: ', TO_STRING(eStep));
