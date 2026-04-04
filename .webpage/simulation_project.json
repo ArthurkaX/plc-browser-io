@@ -1,0 +1,27 @@
+{
+  "connection": {
+    "url": "ws://localhost:8080",
+    "txRate": 10,
+    "wdTimeout": 100
+  },
+  "inputs": [
+    {
+      "name": "uiWatchdog_Inputs",
+      "type": "BYTE"
+    },
+    {
+      "name": "xStart",
+      "type": "BIT"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "uiWatchdog_Outputs",
+      "type": "BYTE"
+    },
+    {
+      "name": "xlight",
+      "type": "BIT"
+    }
+  ]
+}

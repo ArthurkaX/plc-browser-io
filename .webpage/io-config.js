@@ -176,7 +176,29 @@ window.addHandlerSignal = (prefix) => {
     window.renderEditors();
 };
 
-window.saveToFile = (content, filename) => {
+window.saveToFile = async (content, filename) => {
+    // 1. Try to use modern File System Access API for "Save As" dialog
+    if ('showSaveFilePicker' in window) {
+        try {
+            const isJson = filename.endsWith('.json');
+            const handle = await window.showSaveFilePicker({
+                suggestedName: filename,
+                types: [{
+                    description: isJson ? 'JSON Project' : 'CODESYS ST File',
+                    accept: { [isJson ? 'application/json' : 'text/plain']: [isJson ? '.json' : '.st'] }
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            return; // Success
+        } catch (err) {
+            if (err.name === 'AbortError') return; // User cancelled
+            console.warn('File System Access API failed:', err);
+        }
+    }
+
+    // 2. Fallback: Standard Blob/Download (often goes straight to Downloads)
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -215,10 +237,17 @@ window.getCommSettings = () => {
 };
 
 window.exportProjectJSON = () => {
+    // Clean up signals: only include length for STRING types
+    const cleanSignals = (signals) => signals.map(sig => {
+        const cleaned = { name: sig.name, type: sig.type };
+        if (sig.type === 'STRING') cleaned.length = sig.length;
+        return cleaned;
+    });
+
     const config = {
         connection: window.getCommSettings(),
-        inputs: window.inputHandler.signals,
-        outputs: window.outputHandler.signals
+        inputs: cleanSignals(window.inputHandler.signals),
+        outputs: cleanSignals(window.outputHandler.signals)
     };
     window.saveToFile(JSON.stringify(config, null, 2), 'simulation_project.json');
 };
