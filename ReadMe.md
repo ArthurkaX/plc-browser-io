@@ -2,6 +2,11 @@
 
 A high-performance bridge for interconnecting Web-based process simulations with PLC (Programmable Logic Controllers) via WebSockets.
 
+**Live Demo:** [https://arthurkax.github.io/plc-browser-io/](https://arthurkax.github.io/plc-browser-io/)
+
+> [!IMPORTANT]
+> The Live Demo requires a **running WebSocket server** on the PLC side (using the included CODESYS project) to actually exchange data. Browsing the demo alone will show a "Connection Error" unless a local or remote PLC is listening.
+
 ## 🎯 Project Goal
 
 The main objective is to provide a simple, lightweight, and extremely fast interface for **rapid prototyping and simulation** of industrial processes. 
