@@ -127,7 +127,14 @@ const DashboardUI = {
                 console.log("[PLC Browser] No default config found (status " + res.status + ").");
             }
         } catch (err) {
-            console.log("[PLC Browser] Auto-load skipped (fetch error or CORS).");
+            console.log("[PLC Browser] Auto-load skipped (fetch error or CORS).", err);
+            if (window.location.protocol === 'file:') {
+                // Inform user visually
+                const btn = document.getElementById('btn-ws-connect');
+                btn.style.border = '2px solid orange';
+                btn.title = "Auto-load disabled: You opened this file directly (file://). Use a local server (like Live Server) to auto-load JSON files.";
+                console.warn("⚠️ AUTO-LOAD DISABLED: Running from file://. Browsers block local JSON fetching. Please use VS Code Live Server or similar.");
+            }
         }
     },
 
