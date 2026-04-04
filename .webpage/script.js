@@ -4,7 +4,7 @@
  */
 const SimulationEngine = {
     socket: null,
-    intervalId: null,
+    worker: null,
     isConnected: false,
 
     async connect() {
@@ -53,7 +53,10 @@ const SimulationEngine = {
         const btn = document.getElementById('btn-ws-connect');
         if (btn) { btn.innerText = '🚀 CONNECT SIMULATION'; btn.style.background = ''; btn.style.opacity = '1'; }
 
-        if (this.intervalId) clearInterval(this.intervalId);
+        if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
+        }
         if (this.socket) {
             this.socket.onclose = null;
             this.socket.onerror = null;
@@ -63,10 +66,31 @@ const SimulationEngine = {
     },
 
     startLoop(rate) {
-        if (this.intervalId) clearInterval(this.intervalId);
-        this.intervalId = setInterval(() => {
+        if (this.worker) {
+            this.worker.terminate();
+        }
+        
+        // Use an inline Web Worker to bypass inactive tab background throttling (1Hz limit)
+        const workerCode = `
+            let timerId = null;
+            self.onmessage = function(e) {
+                if (e.data.command === 'start') {
+                    if (timerId) clearInterval(timerId);
+                    timerId = setInterval(() => self.postMessage('tick'), e.data.rate);
+                } else if (e.data.command === 'stop') {
+                    if (timerId) clearInterval(timerId);
+                    timerId = null;
+                }
+            };
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        this.worker = new Worker(URL.createObjectURL(blob));
+        
+        this.worker.onmessage = () => {
             this.sync();
-        }, rate);
+        };
+        
+        this.worker.postMessage({ command: 'start', rate: rate });
     },
 
     sync() {
