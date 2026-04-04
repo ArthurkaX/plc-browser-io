@@ -4,9 +4,10 @@ A high-performance bridge for interconnecting Web-based process simulations with
 
 **Live Demo:** [https://arthurkax.github.io/plc-browser-io/](https://arthurkax.github.io/plc-browser-io/)
 
-<div align="center">
-  ![Preview Simulation](img/preview.gif)
-</div>
+
+![Preview Simulation](img/preview.gif)
+
+
 
 > [!IMPORTANT]
 > The Live Demo requires a **running WebSocket server** on the PLC side (using the included CODESYS project) to actually exchange data. Browsing the demo alone will show a "Connection Error" unless a local or remote PLC is listening.
