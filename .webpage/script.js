@@ -26,7 +26,7 @@ const SimulationEngine = {
             this.socket.onmessage = (event) => {
                 if (event.data instanceof ArrayBuffer) {
                     window.outputHandler.unpackPayload(event.data);
-                    window.renderMonitor(); // Update UI with fresh PLC data
+                    window.updateMonitorValues(); // Property-only update
                 }
             };
 
@@ -66,6 +66,7 @@ const SimulationEngine = {
         // 1. Auto-increment Watchdog
         const wd = window.inputHandler.signals[0];
         if (wd) wd.value = (Number(wd.value || 0) + 1) % 255;
+        window.updateMonitorValues(); // Show WD activity
 
         // 2. Pack & Send Inputs (To PLC)
         const buffer = window.inputHandler.packPayload();

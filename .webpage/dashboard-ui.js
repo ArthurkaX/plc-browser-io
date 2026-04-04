@@ -108,7 +108,13 @@ const DashboardUI = {
             link.onclick = () => {
                 document.querySelectorAll('.tab-link, .tab-content').forEach(el => el.classList.remove('active'));
                 link.classList.add('active');
-                document.getElementById(link.dataset.tab).classList.add('active');
+                const target = document.getElementById(link.dataset.tab);
+                target.classList.add('active');
+                
+                // If switching to debug, ensure the monitor table is built
+                if (link.dataset.tab === 'tab-debug') {
+                    window.renderMonitor();
+                }
             };
         });
 
