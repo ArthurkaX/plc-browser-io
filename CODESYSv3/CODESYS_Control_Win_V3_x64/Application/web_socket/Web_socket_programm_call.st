@@ -3,10 +3,9 @@ VAR
 	fbWS          : FB_WebSocket_Server;
 	xStart        : BOOL := TRUE;          // Set TRUE to start server
 	
-	stSimInputs   : ST_SimulationInputs;  // Data FROM Browser
-	stSimOutputs  : ST_SimulationOutputs; // Data TO Browser
+	// LOCAL structures removed to use GLOBAL IO.input and IO.output
 	
-	// Watchdog logic
+	// Watchdog logic (local tracking)
 	uiLastWD      : BYTE;
 	tonWD         : TON;
 	xCommError    : BOOL;
@@ -17,31 +16,31 @@ END_VAR
 
 // === IMPLEMENTATION ===
 
-// 1. Increment Watchdog for Browser
-stSimOutputs.uiWatchdog_Outputs := stSimOutputs.uiWatchdog_Outputs + 1;
+// 1. Increment Watchdog for Browser (FROM PLC TO JS)
+IO.output.uiWatchdog_Outputs := IO.output.uiWatchdog_Outputs + 1;
 
-// 2. Monitoring Watchdog from Browser
-IF stSimInputs.uiWatchdog_Inputs <> uiLastWD THEN
-	uiLastWD := stSimInputs.uiWatchdog_Inputs;
+// 2. Monitoring Watchdog from Browser (FROM JS TO PLC)
+IF IO.input.uiWatchdog_Inputs <> uiLastWD THEN
+	uiLastWD := IO.input.uiWatchdog_Inputs;
 	tonWD(IN := FALSE); // Reset timer
 END_IF;
 
-tonWD(IN := TRUE, PT := T#1000MS); // Default 1s, can be changed based on JSON
+tonWD(IN := TRUE, PT := T#1000MS); // Watchdog threshold
 xCommError := tonWD.Q;
 
-// 3. Cyclic Send (target 10ms)
+// 3. Cyclic Send (10ms check)
 tonSend(IN := NOT tonSend.Q, PT := T#10MS);
 
-// 4. WebSocket Server Call
+// 4. WebSocket Server Call - DIRECTly using Global IO
 fbWS(
 	xEnable      := xStart,
 	ipAddr       := GVL_WebSocket.sServerAddr,
 	uiPort       := GVL_WebSocket.uiServerPort,
-	pSendData    := ADR(stSimOutputs),
-	uiSendSize   := SIZEOF(stSimOutputs),
+	pSendData    := ADR(IO.output),
+	uiSendSize   := SIZEOF(IO.output),
 	xSendTrigger := tonSend.Q,
-	pRecvData    := ADR(stSimInputs),
-	uiRecvSize   := SIZEOF(stSimInputs)
+	pRecvData    := ADR(IO.input),
+	uiRecvSize   := SIZEOF(IO.input)
 );
 
 // 5. Global Status Update
@@ -53,8 +52,6 @@ GVL_WebSocket.sLastError       := fbWS.sError;
 
 IF fbWS.xNewDataReceived THEN
 	GVL_WebSocket.xNewDataReceived  := TRUE;
-	// Log for confirmation (optional, might be heavy at 10ms)
-	// LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= 'Data Sync OK');
 ELSE
 	GVL_WebSocket.xNewDataReceived := FALSE;
 END_IF;

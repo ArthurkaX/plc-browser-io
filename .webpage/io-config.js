@@ -22,17 +22,116 @@ class IOHandler {
         this.signals.push({ name, type, length: parseInt(length) });
     }
 
-    removeSignal(index) {
-        if (index === 0) return; // Don't remove watchdog
-        this.signals.splice(index, 1);
-        window.renderEditors();
+    /**
+     * BINARY PACKER: Prepare ArrayBuffer for transmission to PLC
+     */
+    packPayload() {
+        const size = this.calculateTotalSize();
+        const buffer = new ArrayBuffer(size);
+        const view = new DataView(buffer);
+        let bitCount = 0;
+        let currentByte = 0;
+
+        this.signals.forEach(sig => {
+            const info = this.types[sig.type];
+            // 1. Handle Alignment (Same logic as ST gen)
+            if (bitCount > 0 && !info.isBit) { currentByte++; bitCount = 0; }
+            if (!info.isBit) {
+                const paddingNeeded = (info.align - (currentByte % info.align)) % info.align;
+                currentByte += paddingNeeded;
+            }
+
+            // 2. Put Value
+            const val = sig.value || 0;
+            switch(sig.type) {
+                case 'BIT':
+                    if (val) view.setUint8(currentByte, view.getUint8(currentByte) | (1 << bitCount));
+                    bitCount++;
+                    if (bitCount === 8) { bitCount = 0; currentByte++; }
+                    break;
+                case 'BYTE': view.setUint8(currentByte++, val); break;
+                case 'INT':  view.setInt16(currentByte, val, true); currentByte += 2; break;
+                case 'UINT': view.setUint16(currentByte, val, true); currentByte += 2; break;
+                case 'DINT': view.setInt32(currentByte, val, true); currentByte += 4; break;
+                case 'REAL': view.setFloat32(currentByte, val, true); currentByte += 4; break;
+                case 'STRING':
+                    const enc = new TextEncoder();
+                    const bytes = enc.encode(String(val));
+                    for(let i=0; i < Math.min(bytes.length, sig.length); i++) {
+                        view.setUint8(currentByte + i, bytes[i]);
+                    }
+                    view.setUint8(currentByte + sig.length, 0); // Null term
+                    currentByte += (sig.length + 1);
+                    break;
+            }
+        });
+        return buffer;
     }
 
     /**
-     * SORTING STRATEGY: Big-to-Small (Minimize slack)
-     * Keeps watchdog at index 0, then sorts by alignment (4, then 2, then 1).
+     * BINARY UNPACKER: Extract values from PLC buffer into signals
      */
-    sortSignals() {
+    unpackPayload(buffer) {
+        if (buffer.byteLength < 1) return;
+        const view = new DataView(buffer);
+        let bitCount = 0;
+        let currentByte = 0;
+
+        this.signals.forEach(sig => {
+            const info = this.types[sig.type];
+            if (bitCount > 0 && !info.isBit) { currentByte++; bitCount = 0; }
+            if (!info.isBit) {
+                const paddingNeeded = (info.align - (currentByte % info.align)) % info.align;
+                currentByte += paddingNeeded;
+            }
+
+            if (currentByte >= buffer.byteLength) return;
+
+            switch(sig.type) {
+                case 'BIT':
+                    sig.value = (view.getUint8(currentByte) & (1 << bitCount)) !== 0;
+                    bitCount++;
+                    if (bitCount === 8) { bitCount = 0; currentByte++; }
+                    break;
+                case 'BYTE': sig.value = view.getUint8(currentByte++); break;
+                case 'INT':  sig.value = view.getInt16(currentByte, true); currentByte += 2; break;
+                case 'UINT': sig.value = view.getUint16(currentByte, true); currentByte += 2; break;
+                case 'DINT': sig.value = view.getInt32(currentByte, true); currentByte += 4; break;
+                case 'REAL': sig.value = view.getFloat32(currentByte, true); currentByte += 4; break;
+                case 'STRING':
+                    let s = "";
+                    for(let i=0; i < sig.length; i++) {
+                        const b = view.getUint8(currentByte + i);
+                        if (b === 0) break;
+                        s += String.fromCharCode(b);
+                    }
+                    sig.value = s;
+                    currentByte += (sig.length + 1);
+                    break;
+            }
+        });
+    }
+
+    calculateTotalSize() {
+        // Simple logic to find max offset + size
+        let bitCount = 0;
+        let currentByte = 0;
+        this.signals.forEach(sig => {
+            const info = this.types[sig.type];
+            if (bitCount > 0 && !info.isBit) { currentByte++; bitCount = 0; }
+            if (!info.isBit) currentByte += (info.align - (currentByte % info.align)) % info.align;
+            
+            if (info.isBit) {
+                bitCount++;
+                if (bitCount === 8) { bitCount = 0; currentByte++; }
+            } else {
+                currentByte += (sig.type === 'STRING' ? sig.length + 1 : info.size / 8);
+            }
+        });
+        return bitCount > 0 ? currentByte + 1 : currentByte;
+    }
+
+    generateST(structName) {
         const watchdog = this.signals[0];
         const rest = this.signals.slice(1);
         
@@ -213,18 +312,42 @@ window.renderMonitor = () => {
         const container = document.getElementById(containerId);
         if (!container) return;
         container.innerHTML = '';
-        handler.signals.forEach(sig => {
+        handler.signals.forEach((sig, index) => {
             const div = document.createElement('div');
             div.className = 'monitor-item';
+            div.style = "display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.05);";
+            
+            let inputHtml = '';
+            const val = sig.value || 0;
+            
+            if (sig.type === 'BIT') {
+                inputHtml = `<input type="checkbox" ${val ? 'checked' : ''} ${isInput ? '' : 'disabled'} 
+                onchange="window.updateSigValue('${handler.prefix}', ${index}, this.checked)">`;
+            } else {
+                inputHtml = `<input type="text" value="${val}" ${isInput ? '' : 'disabled'} 
+                style="width:80px; padding: 0.1rem 0.3rem; font-size: 0.8rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff;"
+                oninput="window.updateSigValue('${handler.prefix}', ${index}, this.value)">`;
+            }
+
             div.innerHTML = `
-                <label style="font-size:0.7rem; margin-bottom:0;">${sig.name}</label>
-                ${sig.type === 'BIT' ? `<input type="checkbox" ${isInput ? '' : 'disabled'}>` : `<input type="text" value="0" ${isInput ? '' : 'disabled'} style="width:70px; padding: 0.2rem; font-size: 0.8rem;">`}
+                <label style="font-size:0.7rem; color: var(--text-muted);">${sig.name}</label>
+                ${inputHtml}
             `;
             container.appendChild(div);
         });
     };
     renderList(window.inputHandler, 'monitor-inputs', true);
     renderList(window.outputHandler, 'monitor-outputs', false);
+};
+
+window.updateSigValue = (prefix, index, val) => {
+    const handler = prefix === 'Inputs' ? window.inputHandler : window.outputHandler;
+    const sig = handler.signals[index];
+    if (sig) {
+        if (sig.type === 'BIT') sig.value = !!val;
+        else if (sig.type === 'STRING') sig.value = String(val);
+        else sig.value = Number(val);
+    }
 };
 
 // Global Communication Settings Accessor

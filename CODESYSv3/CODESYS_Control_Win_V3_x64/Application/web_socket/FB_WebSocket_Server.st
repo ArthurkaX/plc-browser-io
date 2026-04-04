@@ -80,7 +80,7 @@ END_IF;
 xNewDataReceived := FALSE;
 
 CASE eStep OF
-// ... (IDLE, SERVER_STARTING etc)
+
 E_WS_State.IDLE:
 	xRunning := FALSE;
 	xClientConnected := FALSE;
@@ -89,7 +89,7 @@ E_WS_State.IDLE:
 	IF xEnable THEN
 		eStep := E_WS_State.SERVER_STARTING;
 	END_IF;
-// ...
+
 E_WS_State.SERVER_STARTING:
 	IF fbServer.xError THEN
 		sError := 'TCP_Server failed';
@@ -98,7 +98,7 @@ E_WS_State.SERVER_STARTING:
 		xRunning := TRUE;
 		eStep := E_WS_State.CONN_WAITING;
 	END_IF;
-// ...
+
 E_WS_State.CONN_WAITING:
 	IF fbConnection.xActive THEN
 		xClientConnected := TRUE;
@@ -108,8 +108,6 @@ E_WS_State.CONN_WAITING:
 		eStep := E_WS_State.ERROR;
 	END_IF;
 
-
-// --------------------------------------------------
 E_WS_State.HANDSHAKE_READ:
 	fbRead(
 		xEnable     := TRUE,
@@ -126,7 +124,6 @@ E_WS_State.HANDSHAKE_READ:
 		eStep := E_WS_State.CLOSING;
 	END_IF;
 
-// --------------------------------------------------
 E_WS_State.HANDSHAKE_PARSE:
 	sClientKey := FC_ExtractWSKey(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen);
 	IF LEN(sClientKey) = 0 THEN
@@ -150,7 +147,6 @@ E_WS_State.HANDSHAKE_PARSE:
 		eStep := E_WS_State.HANDSHAKE_SEND;
 	END_IF;
 
-// --------------------------------------------------
 E_WS_State.HANDSHAKE_SEND:
 	fbWrite(
 		xExecute    := TRUE,
@@ -160,13 +156,13 @@ E_WS_State.HANDSHAKE_SEND:
 	);
 	IF fbWrite.xDone THEN
 		fbWrite(xExecute := FALSE);
+		LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= 'WS Client Handshake OK');
 		eStep := E_WS_State.WS_CONNECTED;
 	ELSIF fbWrite.xError THEN
 		sError := 'Handshake send failed';
 		eStep := E_WS_State.CLOSING;
 	END_IF;
 
-// --------------------------------------------------
 E_WS_State.WS_CONNECTED:
 	xHandshakeOK := TRUE;
 	IF NOT fbConnection.xActive THEN
@@ -174,12 +170,10 @@ E_WS_State.WS_CONNECTED:
 		eStep := E_WS_State.CLOSING;
 	END_IF;
 
-// --------------------------------------------------
 E_WS_State.WS_SEND_CLOSE:
-	// Build Close frame (opcode 0x8)
 	uiFrameLen := FC_WS_BuildFrame(
 		eOpcode := E_WS_Opcode.CLOSE,
-		pPayload := ADR(abFrameBuf), // empty payload
+		pPayload := ADR(abFrameBuf), 
 		uiPayloadLen := 0,
 		xFin := TRUE,
 		abOutBuf := abFrameBuf
@@ -190,25 +184,20 @@ E_WS_State.WS_SEND_CLOSE:
 	END_FOR;
 	uiSendLen := uiFrameLen;
 	
-	LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-		Message:= 'WS Send: Close frame');
-
 	fbWrite(
 		xExecute := TRUE,
 		hConnection := fbConnection.hConnection,
 		szSize := TO_UDINT(uiSendLen),
 		pData := ADR(abSendBuf)
 	);
-	
 	IF fbWrite.xDone THEN
 		fbWrite(xExecute := FALSE);
 		eStep := E_WS_State.CLOSING;
 	ELSIF fbWrite.xError THEN
 		fbWrite(xExecute := FALSE);
-		eStep := E_WS_State.CLOSING; // Close anyway on error
+		eStep := E_WS_State.CLOSING; 
 	END_IF;
 
-// --------------------------------------------------
 E_WS_State.CLOSING:
 	fbRead(xEnable := FALSE);
 	fbWrite(xExecute := FALSE);
@@ -216,7 +205,6 @@ E_WS_State.CLOSING:
 	fbServer(xEnable := FALSE);
 	eStep := E_WS_State.IDLE;
 
-// --------------------------------------------------
 E_WS_State.ERROR:
 	xRunning := FALSE;
 	IF NOT xEnable THEN
@@ -241,21 +229,7 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 	IF fbRead.xReady AND fbRead.szCount > 0 THEN
 		uiRecvLen := TO_UINT(fbRead.szCount);
 		
-		IF xDebug THEN
-			// Log raw bytes for debugging
-			sLogMsg := CONCAT('RX raw: len=', TO_STRING(uiRecvLen));
-			sLogMsg := CONCAT(sLogMsg, CONCAT(' b0=', TO_STRING(abRecvBuf[0])));
-			sLogMsg := CONCAT(sLogMsg, CONCAT(' b1=', TO_STRING(abRecvBuf[1])));
-			LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= sLogMsg);
-		END_IF;
-		
 		IF FC_WS_ParseFrame(pData := ADR(abRecvBuf), uiDataLen := uiRecvLen, stFrame := stFrame) THEN
-			IF xDebug THEN
-				sLogMsg := CONCAT('Parsed opcode=', TO_STRING(stFrame.eOpcode));
-				sLogMsg := CONCAT(sLogMsg, CONCAT(' payloadLen=', TO_STRING(stFrame.udiPayloadLen)));
-				LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= sLogMsg);
-			END_IF;
-			
 			CASE stFrame.eOpcode OF
 				E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
 					IF pRecvData <> 0 AND uiRecvSize > 0 THEN
@@ -266,37 +240,16 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 						xNewDataReceived := TRUE;
 					END_IF;
 					
-					IF xDebug THEN
-						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-							Message:= CONCAT('WS Recv: Binary Map Size=', TO_STRING(uiReceivedLen)));
-					END_IF;
-					
 				E_WS_Opcode.CLOSE:
-					IF xDebug THEN
-						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, 
-							Message:= 'Got CLOSE frame from client');
-					END_IF;
 					sError := 'Client requested close';
-					fbRead(xEnable := FALSE);
+					LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, Message:= 'WS Client Disconnected');
 					eStep := E_WS_State.WS_SEND_CLOSE;
 					
 				E_WS_Opcode.PING:
-					IF xDebug THEN
-						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-							Message:= 'Got PING frame');
-					END_IF;
+					// Handled
 			END_CASE;
-		ELSE
-			IF xDebug THEN
-				LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_WARNING, 
-					Message:= CONCAT('ParseFrame FAILED, len=', TO_STRING(uiRecvLen)));
-			END_IF;
 		END_IF;
 	ELSIF fbRead.xError THEN
-		IF xDebug THEN
-			sLogMsg := CONCAT('fbRead ERROR eError=', TO_STRING(fbRead.eError));
-			LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_ERROR, Message:= sLogMsg);
-		END_IF;
 		sError := 'Read error';
 		eStep := E_WS_State.CLOSING;
 	END_IF;
@@ -319,13 +272,8 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 			
 			fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiSendLen), pData := ADR(abSendBuf));
 			xSendPending := FALSE;
-			
-			IF xDebug THEN
-				LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-					Message:= CONCAT('WS Send: Binary Size=', TO_STRING(uiSendSize)));
-			END_IF;
 		ELSE
-			xSendPending := FALSE; // Nothing to send
+			xSendPending := FALSE; 
 		END_IF;
 			
 	ELSIF fbWrite.xDone OR fbWrite.xError THEN
@@ -337,7 +285,4 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 END_IF;
 
 eState := eStep;
-// Update GVL info
 GVL_WebSocket.sDebugInfo := CONCAT('Step: ', TO_STRING(eStep));
-GVL_WebSocket.sDebugInfo := CONCAT(GVL_WebSocket.sDebugInfo, ' | Cnt: ');
-GVL_WebSocket.sDebugInfo := CONCAT(GVL_WebSocket.sDebugInfo, TO_STRING(fbConnection.xActive));

@@ -32,6 +32,10 @@ const DashboardUI = {
                         <label>WatchDog Timeout (ms)</label>
                         <input type="number" id="dash-wd-timeout" value="100" min="3" max="3000">
                     </div>
+                    <div class="io-actions" style="grid-column: span 2; margin-bottom: 0.5rem;">
+                        <button id="btn-ws-connect" class="primary-btn" style="background: var(--success); color: #000;">🚀 CONNECT SIMULATION</button>
+                        <button id="btn-ws-disconnect" class="secondary-btn">🛑 DISCONNECT</button>
+                    </div>
                     <div class="io-actions" style="grid-column: span 2;">
                         <button id="btn-save-project" class="primary-btn">📁 SAVE PROJECT (JSON)</button>
                         <button id="btn-load-project" class="secondary-btn">📂 LOAD PROJECT (JSON)</button>
@@ -127,6 +131,10 @@ const DashboardUI = {
             navigator.clipboard.writeText(stPreview.innerText);
             alert('ST Code copied to clipboard!');
         };
+
+        // Connection Logic
+        document.getElementById('btn-ws-connect').onclick = () => window.startSimulation();
+        document.getElementById('btn-ws-disconnect').onclick = () => window.stopSimulation();
 
         // Project Save/Load Logic
         document.getElementById('btn-save-project').onclick = () => window.exportProjectJSON();
