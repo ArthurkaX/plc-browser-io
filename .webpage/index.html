@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket 20-Byte Prototype</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    
+    <main class="container">
+        <header class="header">
+            <h1>WS 20-Byte Sync</h1>
+            <div id="connection-status" class="status-indicator">
+                <span class="dot"></span>
+                <span class="status-text">Waiting...</span>
+            </div>
+        </header>
+
+        <section class="config-panel glass">
+            <div class="input-group">
+                <label for="ws-address">WebSocket Address</label>
+                <div class="input-wrapper">
+                    <input type="text" id="ws-address" value="ws://localhost:8080" placeholder="ws://localhost:8080">
+                    <button id="connect-btn" class="primary-btn">Connect</button>
+                    <button id="disconnect-btn" class="secondary-btn hidden">Disconnect</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="data-exchange glass">
+            <div class="data-input">
+                <label for="data-to-send">Data to Send (20 bytes)</label>
+                <div class="input-wrapper">
+                    <input type="text" id="data-to-send" placeholder="Enter up to 20 characters..." maxlength="20">
+                    <button id="send-btn" class="primary-btn">Send</button>
+                </div>
+                <div class="byte-counter"><span id="char-count">0</span>/20</div>
+            </div>
+
+            <div class="data-display">
+                <div class="display-box incoming">
+                    <label>Received (String):</label>
+                    <div id="str-in" class="text-data">—</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="traffic-logs glass">
+            <div class="logs-header">
+                <h3>Packet Log (every 100ms)</h3>
+            </div>
+            <div id="logs" class="logs-container"></div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
