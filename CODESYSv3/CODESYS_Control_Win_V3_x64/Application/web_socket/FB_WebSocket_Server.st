@@ -3,8 +3,12 @@ VAR_INPUT
 	xEnable      : BOOL;
 	ipAddr       : NBS.IP_ADDR;
 	uiPort       : UINT := 8080;
-	sSendPayload : STRING(20) := '';
+	pSendData    : POINTER TO BYTE;
+	uiSendSize   : UINT := 0;
 	xSendTrigger : BOOL;
+	
+	pRecvData    : POINTER TO BYTE;
+	uiRecvSize   : UINT := 0;
 	xDebug       : BOOL := TRUE;
 END_VAR
 
@@ -12,7 +16,7 @@ VAR_OUTPUT
 	xRunning         : BOOL;
 	xClientConnected : BOOL;
 	xHandshakeOK     : BOOL;
-	sReceivedPayload : STRING(20);
+	uiReceivedLen    : UINT;
 	xNewDataReceived : BOOL;
 	eState           : E_WS_State;
 	sError           : STRING(80);
@@ -253,16 +257,19 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 			END_IF;
 			
 			CASE stFrame.eOpcode OF
-				E_WS_Opcode.TEXT:
-					pStr := ADR(sReceivedPayload);
-					FOR i := 0 TO MIN(UDINT_TO_INT(stFrame.udiPayloadLen) - 1, 19) DO
-						pStr[i] := stFrame.abPayload[i];
-					END_FOR;
-					pStr[MIN(UDINT_TO_INT(stFrame.udiPayloadLen), 20)] := 0;
+				E_WS_Opcode.TEXT, E_WS_Opcode.BINARY:
+					IF pRecvData <> 0 AND uiRecvSize > 0 THEN
+						uiReceivedLen := MIN(UDINT_TO_UINT(stFrame.udiPayloadLen), uiRecvSize);
+						FOR i := 0 TO UINT_TO_INT(uiReceivedLen) - 1 DO
+							pRecvData[i] := stFrame.abPayload[i];
+						END_FOR;
+						xNewDataReceived := TRUE;
+					END_IF;
 					
-					LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-						Message:= CONCAT('WS Recv: [', CONCAT(sReceivedPayload, ']')));
-					xNewDataReceived := TRUE;
+					IF xDebug THEN
+						LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
+							Message:= CONCAT('WS Recv: Binary Map Size=', TO_STRING(uiReceivedLen)));
+					END_IF;
 					
 				E_WS_Opcode.CLOSE:
 					IF xDebug THEN
@@ -296,33 +303,30 @@ IF eStep = E_WS_State.WS_CONNECTED THEN
 
 	// --- 2. TRANSMITTER ---
 	IF xSendPending AND NOT fbWrite.xBusy THEN
-		pStr := ADR(sSendPayload);
-		FOR i := 0 TO 19 DO
-			IF i < LEN(sSendPayload) THEN
-				abPayloadOut[i] := pStr[i];
-			ELSE
-				abPayloadOut[i] := 16#20; // Space pad
+		IF pSendData <> 0 AND uiSendSize > 0 THEN
+			uiFrameLen := FC_WS_BuildFrame(
+				eOpcode := E_WS_Opcode.BINARY,
+				pPayload := pSendData,
+				uiPayloadLen := uiSendSize,
+				xFin := TRUE,
+				abOutBuf := abFrameBuf
+			);
+			
+			FOR i := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
+				abSendBuf[i] := abFrameBuf[i];
+			END_FOR;
+			uiSendLen := uiFrameLen;
+			
+			fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := TO_UDINT(uiSendLen), pData := ADR(abSendBuf));
+			xSendPending := FALSE;
+			
+			IF xDebug THEN
+				LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
+					Message:= CONCAT('WS Send: Binary Size=', TO_STRING(uiSendSize)));
 			END_IF;
-		END_FOR;
-		
-		uiFrameLen := FC_WS_BuildFrame(
-			eOpcode := E_WS_Opcode.TEXT,
-			pPayload := ADR(abPayloadOut),
-			uiPayloadLen := 20,
-			xFin := TRUE,
-			abOutBuf := abFrameBuf
-		);
-		
-		FOR i := 0 TO UINT_TO_INT(uiFrameLen) - 1 DO
-			abSendBuf[i] := abFrameBuf[i];
-		END_FOR;
-		uiSendLen := uiFrameLen;
-		
-		fbWrite(xExecute := TRUE, hConnection := fbConnection.hConnection, szSize := uiSendLen, pData := ADR(abSendBuf));
-		xSendPending := FALSE;
-		
-		LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-			Message:= CONCAT('WS Send: [', CONCAT(sSendPayload, ']')));
+		ELSE
+			xSendPending := FALSE; // Nothing to send
+		END_IF;
 			
 	ELSIF fbWrite.xDone OR fbWrite.xError THEN
 		fbWrite(xExecute := FALSE);

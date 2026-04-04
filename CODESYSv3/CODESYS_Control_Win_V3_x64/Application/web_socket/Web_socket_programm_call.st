@@ -2,49 +2,59 @@ PROGRAM Web_socket_programm_call
 VAR
 	fbWS          : FB_WebSocket_Server;
 	xStart        : BOOL := TRUE;          // Set TRUE to start server
-	xSendTrigger  : BOOL;                  // Rising edge to send data
-	xSendLast     : BOOL;
 	
-	// Auto-echo mode: echo received data back to client
-	xAutoEcho     : BOOL := TRUE;
+	stSimInputs   : ST_SimulationInputs;  // Data FROM Browser
+	stSimOutputs  : ST_SimulationOutputs; // Data TO Browser
+	
+	// Watchdog logic
+	uiLastWD      : BYTE;
+	tonWD         : TON;
+	xCommError    : BOOL;
+	
+	// Cyclic transmission
+	tonSend       : TON;
 END_VAR
 
 // === IMPLEMENTATION ===
-// ===== WebSocket Server =====
+
+// 1. Increment Watchdog for Browser
+stSimOutputs.uiWatchdog_Outputs := stSimOutputs.uiWatchdog_Outputs + 1;
+
+// 2. Monitoring Watchdog from Browser
+IF stSimInputs.uiWatchdog_Inputs <> uiLastWD THEN
+	uiLastWD := stSimInputs.uiWatchdog_Inputs;
+	tonWD(IN := FALSE); // Reset timer
+END_IF;
+
+tonWD(IN := TRUE, PT := T#1000MS); // Default 1s, can be changed based on JSON
+xCommError := tonWD.Q;
+
+// 3. Cyclic Send (target 10ms)
+tonSend(IN := NOT tonSend.Q, PT := T#10MS);
+
+// 4. WebSocket Server Call
 fbWS(
 	xEnable      := xStart,
 	ipAddr       := GVL_WebSocket.sServerAddr,
 	uiPort       := GVL_WebSocket.uiServerPort,
-	sSendPayload := GVL_WebSocket.sSendData,
-	xSendTrigger := GVL_WebSocket.xSendTrigger
+	pSendData    := ADR(stSimOutputs),
+	uiSendSize   := SIZEOF(stSimOutputs),
+	xSendTrigger := tonSend.Q,
+	pRecvData    := ADR(stSimInputs),
+	uiRecvSize   := SIZEOF(stSimInputs)
 );
 
-// ===== Update global status =====
+// 5. Global Status Update
 GVL_WebSocket.xServerRunning   := fbWS.xRunning;
 GVL_WebSocket.xClientConnected := fbWS.xClientConnected;
 GVL_WebSocket.xHandshakeDone   := fbWS.xHandshakeOK;
 GVL_WebSocket.uiDebugState     := fbWS.eState;
 GVL_WebSocket.sLastError       := fbWS.sError;
 
-// ===== Handle received data =====
 IF fbWS.xNewDataReceived THEN
-	GVL_WebSocket.sReceivedData     := fbWS.sReceivedPayload;
 	GVL_WebSocket.xNewDataReceived  := TRUE;
-	
-	// PLC Logging for visibility
-	LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, 
-		Message:= CONCAT('PLC received: ', fbWS.sReceivedPayload));
-	
-	// Auto-echo if enabled
-	IF xAutoEcho THEN
-		GVL_WebSocket.sSendData := fbWS.sReceivedPayload;
-		GVL_WebSocket.xSendTrigger := TRUE;
-	END_IF;
+	// Log for confirmation (optional, might be heavy at 10ms)
+	// LogComponent.Logger.LogADD(Component:= LogComponent.WS, LogClass:= cmplog.LogClass.LOG_INFO, Message:= 'Data Sync OK');
 ELSE
 	GVL_WebSocket.xNewDataReceived := FALSE;
-END_IF;
-
-// Reset trigger in GVL after FB picked it up
-IF GVL_WebSocket.xSendTrigger THEN
-	GVL_WebSocket.xSendTrigger := FALSE;
 END_IF;
