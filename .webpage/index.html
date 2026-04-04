@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket 20-Byte Prototype</title>
+    <title>PLC Browser IO | Simulation Boilerplate</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,145 +12,17 @@
 <body>
     <div class="glass-bg"></div>
     
-    <main class="container">
-        <header class="header">
-            <h1>WS 20-Byte Sync</h1>
-            <div id="connection-status" class="status-indicator">
-                <span class="dot"></span>
-                <span class="status-text">Waiting...</span>
-            </div>
-        </header>
-
-        <section class="config-panel glass">
-            <div class="input-group">
-                <label for="ws-address">WebSocket Address</label>
-                <div class="input-wrapper">
-                    <input type="text" id="ws-address" value="ws://localhost:8080" placeholder="ws://localhost:8080">
-                    <button id="connect-btn" class="primary-btn">Connect</button>
-                    <button id="disconnect-btn" class="secondary-btn hidden">Disconnect</button>
-                </div>
-            </div>
-        </section>
-
-        <section class="data-exchange glass">
-            <div class="data-input">
-                <label for="data-to-send">Data to Send (20 bytes)</label>
-                <div class="input-wrapper">
-                    <input type="text" id="data-to-send" placeholder="Enter up to 20 characters..." maxlength="20">
-                    <button id="send-btn" class="primary-btn">Send</button>
-                </div>
-                <div class="byte-counter"><span id="char-count">0</span>/20</div>
-            </div>
-
-            <div class="data-display">
-                <div class="display-box incoming">
-                    <label>Received (String):</label>
-                    <div id="str-in" class="text-data">—</div>
-                </div>
-            </div>
-        </section>
-
-        <section class="traffic-logs glass">
-            <div class="logs-header">
-                <h3>Packet Log (every 100ms)</h3>
-            </div>
-            <div id="logs" class="logs-container"></div>
-        </section>
-
-        <!-- New: IO Configurator & ST Generator -->
-        <section class="io-config-block glass">
-            <div class="logs-header">
-                <h3>IO Mapping & CODESYS ST Generator</h3>
-            </div>
-            <div class="io-controls">
-                <input type="text" id="signal-name" placeholder="Signal Name (e.g. xPumpStart)">
-                <select id="signal-type">
-                    <option value="BIT">BIT</option>
-                    <option value="BYTE">BYTE</option>
-                    <option value="INT">INT</option>
-                    <option value="UINT">UINT</option>
-                    <option value="REAL">REAL</option>
-                    <option value="STRING">STRING</option>
-                </select>
-                <input type="number" id="signal-length" placeholder="Len" value="20" style="width: 60px;">
-                <button id="add-signal-btn" class="primary-btn">Add Signal</button>
-                <button id="generate-st-btn" class="secondary-btn">Generate ST</button>
-            </div>
-            
-            <div class="st-preview-container">
-                <pre id="st-preview" class="code-box">// CODESYS ST will appear here...</pre>
-                <button id="copy-st-btn" class="copy-btn">Copy to Clipboard</button>
-            </div>
-        </section>
+    <main class="boilerplate-container">
+        <div class="empty-state">
+            <h1>PLC Browser IO</h1>
+            <p>Your simulation project starts here.</p>
+            <div class="hint">Press <kbd>F9</kbd> to open Configuration & Debug Dashboard</div>
+        </div>
     </main>
 
-    <!-- F9 Configuration & Magic Dashboard -->
-    <div id="magic-dashboard" class="modal hidden">
-        <div class="modal-content glass">
-            <header class="modal-header">
-                <h2>⚡ ПУЛЬТ УПРАВЛЕНИЯ (F9)</h2>
-                <button id="close-modal" class="close-btn">&times;</button>
-            </header>
-
-            <nav class="modal-tabs">
-                <button class="tab-link active" data-tab="tab-settings">СВЯЗЬ</button>
-                <button class="tab-link" data-tab="tab-inputs">ВХОДЫ (TO PLC)</button>
-                <button class="tab-link" data-tab="tab-outputs">ВЫХОДЫ (FROM PLC)</button>
-                <button class="tab-link" data-tab="tab-debug">ОТЛАДКА / LIVE</button>
-            </nav>
-
-            <div class="tab-content active" id="tab-settings">
-                <div class="config-grid">
-                    <div class="input-group">
-                        <label>Адрес WebSocket</label>
-                        <input type="text" id="dash-ws-address" value="ws://localhost:8080">
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-content" id="tab-inputs">
-                <div class="io-editor" id="inputs-editor">
-                    <!-- IO entries here -->
-                </div>
-                <div class="io-actions">
-                    <button id="btn-add-input" class="primary-btn">+ Добавить Вход</button>
-                    <button id="btn-gen-inputs-st" class="secondary-btn">Генерировать (Inputs.st)</button>
-                    <button id="btn-save-inputs-st" class="secondary-btn">Сохранить .st</button>
-                </div>
-            </div>
-
-            <div class="tab-content" id="tab-outputs">
-                <div class="io-editor" id="outputs-editor">
-                    <!-- IO entries here -->
-                </div>
-                <div class="io-actions">
-                    <button id="btn-add-output" class="primary-btn">+ Добавить Выход</button>
-                    <button id="btn-gen-outputs-st" class="secondary-btn">Генерировать (Outputs.st)</button>
-                    <button id="btn-save-outputs-st" class="secondary-btn">Сохранить .st</button>
-                </div>
-            </div>
-
-            <div class="tab-content" id="tab-debug">
-                <div class="debug-monitor">
-                    <div class="monitor-column">
-                        <h4>ПЕРЕДАЧА (В ПЛК)</h4>
-                        <div id="monitor-inputs" class="monitor-grid"></div>
-                    </div>
-                    <div class="monitor-column">
-                        <h4>ПРИЕМ (ИЗ ПЛК)</h4>
-                        <div id="monitor-outputs" class="monitor-grid"></div>
-                    </div>
-                </div>
-            </div>
-
-            <footer class="modal-footer">
-                <pre id="st-code-preview" class="code-box-mini">// Код появится здесь...</pre>
-                <button id="dash-copy-st" class="copy-btn-mini">COPY</button>
-            </footer>
-        </div>
-    </div>
-
+    <!-- Portable Dashboard Scripts -->
     <script src="io-config.js"></script>
+    <script src="dashboard-ui.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

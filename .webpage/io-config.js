@@ -1,21 +1,19 @@
 /**
- * Advanced IO Handler & Dashboard Manager
- * Manages separate Input/Output structures, F9 Dashboard, and ST generation.
+ * IO Logic Layer
+ * Pure logic for handling IO structures, alignment, and ST generation.
  */
 class IOHandler {
     constructor(prefix = 'Inputs') {
         this.prefix = prefix;
-        this.signals = [
-            { name: `uiWatchdog_${prefix}`, type: 'BYTE' }
-        ];
+        this.signals = [{ name: `uiWatchdog_${prefix}`, type: 'BYTE' }];
         this.MAX_PACKET_SIZE = 1000;
         this.types = {
-            'BIT':    { size: 1,  isBit: true,  align: 1 },
-            'BYTE':   { size: 8,  isBit: false, align: 1 },
-            'INT':    { size: 16, isBit: false, align: 2 },
-            'UINT':   { size: 16, isBit: false, align: 2 },
-            'DINT':   { size: 32, isBit: false, align: 4 },
-            'REAL':   { size: 32, isBit: false, align: 4 },
+            'BIT': { size: 1, isBit: true, align: 1 },
+            'BYTE': { size: 8, isBit: false, align: 1 },
+            'INT': { size: 16, isBit: false, align: 2 },
+            'UINT': { size: 16, isBit: false, align: 2 },
+            'DINT': { size: 32, isBit: false, align: 4 },
+            'REAL': { size: 32, isBit: false, align: 4 },
             'STRING': { size: null, isBit: false, align: 1 },
         };
     }
@@ -27,9 +25,33 @@ class IOHandler {
     removeSignal(index) {
         if (index === 0) return; // Don't remove watchdog
         this.signals.splice(index, 1);
+        window.renderEditors();
+    }
+
+    /**
+     * SORTING STRATEGY: Big-to-Small (Minimize slack)
+     * Keeps watchdog at index 0, then sorts by alignment (4, then 2, then 1).
+     */
+    sortSignals() {
+        const watchdog = this.signals[0];
+        const rest = this.signals.slice(1);
+        
+        rest.sort((a, b) => {
+            const alignA = this.types[a.type].align || 1;
+            const alignB = this.types[b.type].align || 1;
+            
+            // Primary sort by alignment (Large to Small)
+            if (alignA !== alignB) return alignB - alignA;
+            
+            // Secondary sort for same alignment (e.g. DINT vs REAL) - keep original order
+            return 0;
+        });
+
+        this.signals = [watchdog, ...rest];
     }
 
     generateST(structName) {
+        this.sortSignals(); // Always sort before generation
         const name = structName || `ST_Simulation${this.prefix}`;
         let st = `TYPE ${name} :\nSTRUCT\n`;
         let bitCount = 0;
@@ -37,6 +59,7 @@ class IOHandler {
 
         this.signals.forEach((io) => {
             const typeInfo = this.types[io.type];
+            if (!typeInfo) return;
             const align = typeInfo.align;
 
             if (bitCount > 0 && !typeInfo.isBit) {
@@ -80,87 +103,80 @@ class IOHandler {
     }
 }
 
-const inputHandler = new IOHandler('Inputs');
-const outputHandler = new IOHandler('Outputs');
+// Global Instances
+window.inputHandler = new IOHandler('Inputs');
+window.outputHandler = new IOHandler('Outputs');
 
-// Dashboard Logic
-const modal = document.getElementById('magic-dashboard');
-const stPreview = document.getElementById('st-code-preview');
-
-function toggleModal() {
-    modal.classList.toggle('hidden');
-    if (!modal.classList.contains('hidden')) {
-        renderEditors();
-        renderMonitor();
-    }
-}
-
-window.addEventListener('keydown', (e) => {
-    if (e.key === 'F9') {
-        e.preventDefault();
-        toggleModal();
-    }
-});
-
-document.getElementById('close-modal').onclick = toggleModal;
-
-// Tab Switching
-document.querySelectorAll('.tab-link').forEach(link => {
-    link.onclick = () => {
-        document.querySelectorAll('.tab-link, .tab-content').forEach(el => el.classList.remove('active'));
-        link.classList.add('active');
-        document.getElementById(link.dataset.tab).classList.add('active');
-    };
-});
-
-// Render Editor UI
-function renderEditors() {
+// Helper Functions exposed to UI
+window.renderEditors = () => {
     const render = (handler, containerId) => {
         const container = document.getElementById(containerId);
+        if (!container) return;
         container.innerHTML = '';
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'io-row header';
+        header.innerHTML = `<span>Name</span><span>Type</span><span>Len</span><span>Action</span>`;
+        container.appendChild(header);
+
+        // Signal Rows
         handler.signals.forEach((sig, i) => {
             const div = document.createElement('div');
-            div.className = 'monitor-item';
+            div.className = 'io-row';
             div.innerHTML = `
-                <span>${sig.name} (${sig.type}${sig.type === 'STRING' ? '('+sig.length+')':''})</span>
-                ${i > 0 ? `<button onclick="removeSignal('${handler.prefix}', ${i})" style="color:red; background:none; border:none; cursor:pointer;">&times;</button>` : ''}
+                <span>${sig.name}</span>
+                <span>${sig.type}</span>
+                <span>${sig.type === 'STRING' ? sig.length : '-'}</span>
+                ${i > 0 ? `<button onclick="window.removeSignal('${handler.prefix}', ${i})" class="del-btn">&times;</button>` : '<span>---</span>'}
             `;
             container.appendChild(div);
         });
-    };
-    render(inputHandler, 'inputs-editor');
-    render(outputHandler, 'outputs-editor');
-}
 
-window.removeSignal = (prefix, index) => {
-    const handler = prefix === 'Inputs' ? inputHandler : outputHandler;
-    handler.removeSignal(index);
-    renderEditors();
+        // "Add New" Inline Row
+        const addRow = document.createElement('div');
+        addRow.className = 'io-row add-row';
+        addRow.innerHTML = `
+            <input type="text" id="add-${handler.prefix}-name" placeholder="Signal Name..." style="flex: 2">
+            <select id="add-${handler.prefix}-type" style="flex: 1" onchange="window.updateLenInput('${handler.prefix}')">
+                <option value="BIT">BIT</option>
+                <option value="INT">INT</option>
+                <option value="UINT">UINT</option>
+                <option value="REAL">REAL</option>
+                <option value="DINT">DINT</option>
+                <option value="BYTE">BYTE</option>
+                <option value="STRING">STRING</option>
+            </select>
+            <input type="number" id="add-${handler.prefix}-len" value="20" style="flex: 0.5" disabled>
+            <button onclick="window.addHandlerSignal('${handler.prefix}')" class="primary-btn">+</button>
+        `;
+        container.appendChild(addRow);
+    };
+    render(window.inputHandler, 'inputs-editor');
+    render(window.outputHandler, 'outputs-editor');
 };
 
-// Add Signal Logic
-function promptAddSignal(prefix) {
-    const name = prompt(`Enter ${prefix} Signal Name:`);
-    if (!name) return;
-    const type = prompt(`Enter Type (BIT, BYTE, INT, UINT, REAL, STRING):`, 'BIT').toUpperCase();
-    let length = 20;
-    if (type === 'STRING') length = prompt('Enter String Length:', 20);
+window.updateLenInput = (prefix) => {
+    const typeSelect = document.getElementById(`add-${prefix}-type`);
+    const lenInput = document.getElementById(`add-${prefix}-len`);
+    if (typeSelect && lenInput) {
+        lenInput.disabled = (typeSelect.value !== 'STRING');
+    }
+};
+
+window.addHandlerSignal = (prefix) => {
+    const handler = prefix === 'Inputs' ? window.inputHandler : window.outputHandler;
+    const name = document.getElementById(`add-${prefix}-name`).value.trim();
+    const type = document.getElementById(`add-${prefix}-type`).value;
+    const len = document.getElementById(`add-${prefix}-len`).value;
     
-    const handler = prefix === 'Inputs' ? inputHandler : outputHandler;
-    try {
-        handler.addSignal(name, type, length);
-        renderEditors();
-    } catch(e) { alert(e.message); }
-}
+    if (!name) return alert('Name Required');
+    
+    handler.addSignal(name, type, len);
+    window.renderEditors();
+};
 
-document.getElementById('btn-add-input').onclick = () => promptAddSignal('Inputs');
-document.getElementById('btn-add-output').onclick = () => promptAddSignal('Outputs');
-
-// ST Gen & Save
-document.getElementById('btn-gen-inputs-st').onclick = () => { stPreview.innerText = inputHandler.generateST(); };
-document.getElementById('btn-gen-outputs-st').onclick = () => { stPreview.innerText = outputHandler.generateST(); };
-
-function saveToFile(content, filename) {
+window.saveToFile = (content, filename) => {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -168,31 +184,64 @@ function saveToFile(content, filename) {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-}
-
-document.getElementById('btn-save-inputs-st').onclick = () => saveToFile(inputHandler.generateST(), 'Inputs.st');
-document.getElementById('btn-save-outputs-st').onclick = () => saveToFile(outputHandler.generateST(), 'Outputs.st');
-
-document.getElementById('dash-copy-st').onclick = () => {
-    navigator.clipboard.writeText(stPreview.innerText);
-    alert('ST Copied!');
 };
 
-// Live Monitoring (Placeholder for now, connected later to real WebSocket data)
-function renderMonitor() {
+window.renderMonitor = () => {
     const renderList = (handler, containerId, isInput) => {
         const container = document.getElementById(containerId);
+        if (!container) return;
         container.innerHTML = '';
         handler.signals.forEach(sig => {
             const div = document.createElement('div');
             div.className = 'monitor-item';
             div.innerHTML = `
-                <label>${sig.name}</label>
-                ${sig.type === 'BIT' ? `<input type="checkbox" ${isInput ? '' : 'disabled'}>` : `<input type="text" value="0" ${isInput ? '' : 'disabled'} style="width:60px">`}
+                <label style="font-size:0.7rem; margin-bottom:0;">${sig.name}</label>
+                ${sig.type === 'BIT' ? `<input type="checkbox" ${isInput ? '' : 'disabled'}>` : `<input type="text" value="0" ${isInput ? '' : 'disabled'} style="width:70px; padding: 0.2rem; font-size: 0.8rem;">`}
             `;
             container.appendChild(div);
         });
     };
-    renderList(inputHandler, 'monitor-inputs', true);
-    renderList(outputHandler, 'monitor-outputs', false);
-}
+    renderList(window.inputHandler, 'monitor-inputs', true);
+    renderList(window.outputHandler, 'monitor-outputs', false);
+};
+
+// Global Communication Settings Accessor
+window.getCommSettings = () => {
+    return {
+        url: document.getElementById('dash-ws-address')?.value || 'ws://localhost:8080',
+        txRate: parseInt(document.getElementById('dash-tx-rate')?.value) || 10,
+        wdTimeout: parseInt(document.getElementById('dash-wd-timeout')?.value) || 100
+    };
+};
+
+window.exportProjectJSON = () => {
+    const config = {
+        connection: window.getCommSettings(),
+        inputs: window.inputHandler.signals,
+        outputs: window.outputHandler.signals
+    };
+    window.saveToFile(JSON.stringify(config, null, 2), 'simulation_project.json');
+};
+
+window.importProjectJSON = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const config = JSON.parse(e.target.result);
+            if (config.connection) {
+                document.getElementById('dash-ws-address').value = config.connection.url || 'ws://localhost:8080';
+                document.getElementById('dash-tx-rate').value = config.connection.txRate || 10;
+                document.getElementById('dash-wd-timeout').value = config.connection.wdTimeout || 100;
+            }
+            if (config.inputs) window.inputHandler.signals = config.inputs;
+            if (config.outputs) window.outputHandler.signals = config.outputs;
+            
+            window.renderEditors();
+            window.renderMonitor();
+            alert('Project loaded successfully!');
+        } catch (err) {
+            alert('Error loading JSON: ' + err.message);
+        }
+    };
+    reader.readAsText(file);
+};
