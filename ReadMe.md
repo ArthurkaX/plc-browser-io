@@ -86,8 +86,27 @@ The simulation driving the IO map approach:
 ## 🚦 Getting Started
 
 1.  **PLC Setup**: Load the project from `CODESYSv3` into your CODESYS environment (Control Win V3 or hardware).
-2.  **Web Client**: Open `/.webpage/index.html` in any modern browser.
-3.  **Connect**: Enter the PLC IP address and port (default 8080) and hit "Connect".
+2.  **Web Client**: To use the WebUI and automatic config loading, you **must use a local web server**. Do not open the HTML file directly (`file:///`) as browsers block local JSON reads (CORS).
+
+    **Option A: Python (Windows / Linux)**
+    ```bash
+    cd webpage
+    # Windows:
+    python -m http.server 3000
+    # Linux:
+    python3 -m http.server 3000
+    ```
+
+    **Option B: Node.js (Universal)**
+    ```bash
+    cd webpage
+    npx serve -p 3000
+    ```
+
+    **Option C: Quick Start (Windows)**
+    Simply double-click the `start.bat` file in the project root to open an interactive menu that finds and launches an available local server automatically!
+
+3.  **Connect**: Navigate to `http://localhost:3000` in your brower. The UI will automatically load `simulation_project.json` and attempt to connect to the PLC.
 
 ---
 
