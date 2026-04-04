@@ -12,6 +12,35 @@
     {
       "name": "xStart",
       "type": "BIT"
+    },
+    {
+      "name": "xModeAuto",
+      "type": "BIT"
+    },
+    {
+      "name": "rSpeedSetpoint",
+      "type": "REAL"
+    },
+    {
+      "name": "iTargetPosition",
+      "type": "INT"
+    },
+    {
+      "name": "uiCycleCount",
+      "type": "UINT"
+    },
+    {
+      "name": "diEncoderRaw",
+      "type": "DINT"
+    },
+    {
+      "name": "byStatusBits",
+      "type": "BYTE"
+    },
+    {
+      "name": "sProductName",
+      "type": "STRING",
+      "length": 20
     }
   ],
   "outputs": [
@@ -20,8 +49,37 @@
       "type": "BYTE"
     },
     {
-      "name": "xlight",
+      "name": "xLightWarning",
       "type": "BIT"
+    },
+    {
+      "name": "xMotorRunning",
+      "type": "BIT"
+    },
+    {
+      "name": "rActualSpeed",
+      "type": "REAL"
+    },
+    {
+      "name": "iActualPosition",
+      "type": "INT"
+    },
+    {
+      "name": "uiErrorID",
+      "type": "UINT"
+    },
+    {
+      "name": "diEncoderFeedback",
+      "type": "DINT"
+    },
+    {
+      "name": "byErrorCode",
+      "type": "BYTE"
+    },
+    {
+      "name": "sLogMessage",
+      "type": "STRING",
+      "length": 40
     }
   ]
 }

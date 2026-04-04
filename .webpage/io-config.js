@@ -131,7 +131,7 @@ class IOHandler {
         return bitCount > 0 ? currentByte + 1 : currentByte;
     }
 
-    generateST(structName) {
+    sortSignals() {
         const watchdog = this.signals[0];
         const rest = this.signals.slice(1);
         
@@ -272,6 +272,7 @@ window.addHandlerSignal = (prefix) => {
     if (!name) return alert('Name Required');
     
     handler.addSignal(name, type, len);
+    handler.sortSignals();
     window.renderEditors();
 };
 
@@ -406,8 +407,14 @@ window.importProjectJSON = (file) => {
                 document.getElementById('dash-tx-rate').value = config.connection.txRate || 10;
                 document.getElementById('dash-wd-timeout').value = config.connection.wdTimeout || 100;
             }
-            if (config.inputs) window.inputHandler.signals = config.inputs;
-            if (config.outputs) window.outputHandler.signals = config.outputs;
+            if (config.inputs) {
+                window.inputHandler.signals = config.inputs;
+                window.inputHandler.sortSignals();
+            }
+            if (config.outputs) {
+                window.outputHandler.signals = config.outputs;
+                window.outputHandler.sortSignals();
+            }
             
             window.renderEditors();
             window.renderMonitor();

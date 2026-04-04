@@ -531,6 +531,7 @@ select option {
     font-size: 0.7rem;
     letter-spacing: 0.05em;
     color: var(--text-muted) !important;
+    text-transform: none;
 }
 
 /* Custom Value Styling */
