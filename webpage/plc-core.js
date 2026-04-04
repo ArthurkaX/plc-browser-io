@@ -19,9 +19,9 @@ class IOHandler {
         };
     }
 
-    addSignal(name, type, length = 20) {
+    addSignal(name, type, length = 20, comment = '') {
         if (!this.signals.find(s => s.name === name)) {
-            this.signals.push({ name, type, length: parseInt(length), value: 0 });
+            this.signals.push({ name, type, length: parseInt(length), value: 0, comment: comment || '' });
             this.sortSignals();
         }
     }
@@ -177,10 +177,11 @@ class IOHandler {
                 }
             }
 
+            const commentPart = io.comment ? ` //${io.comment}` : '';
             if (io.type === 'STRING') {
-                st += `    ${io.name} : STRING(${io.length}); // Offset: ${currentByte}\n`;
+                st += `    ${io.name} : STRING(${io.length}); // Offset: ${currentByte}${commentPart}\n`;
             } else {
-                st += `    ${io.name} : ${io.type}; // Offset: ${currentByte}${typeInfo.isBit ? '.' + bitCount : ''}\n`;
+                st += `    ${io.name} : ${io.type}; // Offset: ${currentByte}${typeInfo.isBit ? '.' + bitCount : ''}${commentPart}\n`;
             }
 
             if (typeInfo.isBit) {
@@ -334,6 +335,7 @@ class PLCLink {
         const clean = (signals) => signals.map(sig => {
             const obj = { name: sig.name, type: sig.type };
             if (sig.type === 'STRING') obj.length = sig.length;
+            if (sig.comment) obj.comment = sig.comment;
             return obj;
         });
         return JSON.stringify({
@@ -348,11 +350,11 @@ class PLCLink {
             const data = JSON.parse(jsonString);
             if (data.connection) Object.assign(this.config, data.connection);
             if (data.inputs) {
-                this.inputHandler.signals = data.inputs.map(s => ({...s, value: 0}));
+                this.inputHandler.signals = data.inputs.map(s => ({...s, value: 0, comment: s.comment || ''}));
                 this.inputHandler.sortSignals();
             }
             if (data.outputs) {
-                this.outputHandler.signals = data.outputs.map(s => ({...s, value: 0}));
+                this.outputHandler.signals = data.outputs.map(s => ({...s, value: 0, comment: s.comment || ''}));
                 this.outputHandler.sortSignals();
             }
             return true;

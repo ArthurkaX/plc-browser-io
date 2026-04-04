@@ -231,18 +231,59 @@ const DashboardUI = {
             
             const header = document.createElement('div');
             header.className = 'io-row header';
-            header.innerHTML = `<span>Name</span><span>Type</span><span>Len</span><span>Action</span>`;
+            header.innerHTML = `<span>Name</span><span>Type</span><span>Len</span><span>Comment</span><span>Action</span>`;
             container.appendChild(header);
 
             handler.signals.forEach((sig, i) => {
                 const div = document.createElement('div');
                 div.className = 'io-row';
+                if (i === 0) {
+                    div.innerHTML = `
+                        <span>${sig.name}</span>
+                        <span>${sig.type}</span>
+                        <span>-</span>
+                        <span>-</span>
+                        <span>---</span>
+                    `;
+                    container.appendChild(div);
+                    return;
+                }
+                
                 div.innerHTML = `
-                    <span>${sig.name}</span>
-                    <span>${sig.type}</span>
-                    <span>${sig.type === 'STRING' ? sig.length : '-'}</span>
-                    ${i > 0 ? `<button data-action="del" data-prefix="${handler.prefix}" data-name="${sig.name}" class="del-btn">&times;</button>` : '<span>---</span>'}
+                    <input type="text" class="edit-name" value="${sig.name}" placeholder="Name">
+                    <select class="edit-type">
+                        <option value="BIT" ${sig.type==='BIT'?'selected':''}>BIT</option>
+                        <option value="INT" ${sig.type==='INT'?'selected':''}>INT</option>
+                        <option value="UINT" ${sig.type==='UINT'?'selected':''}>UINT</option>
+                        <option value="REAL" ${sig.type==='REAL'?'selected':''}>REAL</option>
+                        <option value="DINT" ${sig.type==='DINT'?'selected':''}>DINT</option>
+                        <option value="BYTE" ${sig.type==='BYTE'?'selected':''}>BYTE</option>
+                        <option value="STRING" ${sig.type==='STRING'?'selected':''}>STRING</option>
+                    </select>
+                    <input type="number" class="edit-len" value="${sig.length || 20}" ${sig.type === 'STRING' ? '' : 'disabled'}>
+                    <input type="text" class="edit-comment" value="${sig.comment || ''}" placeholder="Comment">
+                    <button data-action="del" data-prefix="${handler.prefix}" data-name="${sig.name}" class="del-btn">&times;</button>
                 `;
+                
+                div.querySelector('.edit-name').onchange = (e) => {
+                    const val = e.target.value.trim();
+                    if (val) {
+                        sig.name = val;
+                        div.querySelector('.del-btn').dataset.name = sig.name;
+                    }
+                };
+                div.querySelector('.edit-type').onchange = (e) => {
+                    sig.type = e.target.value;
+                    handler.sortSignals();
+                    this.renderEditors(); // refresh UI to reflect sort and length enable/disable
+                };
+                div.querySelector('.edit-len').onchange = (e) => {
+                    sig.length = parseInt(e.target.value) || 20;
+                };
+                div.querySelector('.edit-comment').onchange = (e) => {
+                    sig.comment = e.target.value.trim();
+                };
+
                 container.appendChild(div);
             });
 
@@ -256,6 +297,7 @@ const DashboardUI = {
                     <option value="DINT">DINT</option><option value="BYTE">BYTE</option><option value="STRING">STRING</option>
                 </select>
                 <input type="number" id="add-${handler.prefix}-len" value="20" style="flex: 0.5" disabled>
+                <input type="text" id="add-${handler.prefix}-comment" placeholder="Comment..." style="flex: 2">
                 <button data-action="add" data-prefix="${handler.prefix}" class="primary-btn">+</button>
             `;
             container.appendChild(addRow);
@@ -281,10 +323,11 @@ const DashboardUI = {
                 const name = document.getElementById(`add-${prefix}-name`).value.trim();
                 const type = document.getElementById(`add-${prefix}-type`).value;
                 const len = document.getElementById(`add-${prefix}-len`).value;
+                const comment = document.getElementById(`add-${prefix}-comment`).value.trim();
                 if (!name) return alert('Name Required');
                 
-                if (prefix === 'Inputs') PLC.inputHandler.addSignal(name, type, len);
-                else PLC.outputHandler.addSignal(name, type, len);
+                if (prefix === 'Inputs') PLC.inputHandler.addSignal(name, type, len, comment);
+                else PLC.outputHandler.addSignal(name, type, len, comment);
                 
                 this.renderEditors();
             }

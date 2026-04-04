@@ -613,7 +613,7 @@ select option {
 /* IO Table Grid System */
 .io-row {
     display: grid;
-    grid-template-columns: 2fr 1.2fr 1fr 80px;
+    grid-template-columns: 2fr 1.2fr 1fr 2fr 80px;
     align-items: center;
     gap: 1.5rem;
     padding: 0.85rem 1.25rem;
