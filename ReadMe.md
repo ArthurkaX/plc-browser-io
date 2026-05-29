@@ -1,5 +1,13 @@
 # ⚡ PLC Browser IO (Simulation Bridge)
 
+[![Release](https://img.shields.io/github/v/release/ArthurkaX/plc-browser-io?include_prereleases&sort=semver)](https://github.com/ArthurkaX/plc-browser-io/releases)
+[![Downloads](https://img.shields.io/github/downloads/ArthurkaX/plc-browser-io/total)](https://github.com/ArthurkaX/plc-browser-io/releases)
+[![Stars](https://img.shields.io/github/stars/ArthurkaX/plc-browser-io?style=flat)](https://github.com/ArthurkaX/plc-browser-io/stargazers)
+[![Forks](https://badgen.net/github/forks/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/forks)
+[![Issues](https://img.shields.io/github/issues/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/issues)
+[![Last commit](https://img.shields.io/github/last-commit/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/commits/main)
+[![License](https://img.shields.io/github/license/ArthurkaX/plc-browser-io)](LICENSE)
+
 A high-performance bridge for interconnecting Web-based process simulations with PLC (Programmable Logic Controllers) via WebSockets.
 
 **Live Demo:** [https://arthurkax.github.io/plc-browser-io/](https://arthurkax.github.io/plc-browser-io/)
