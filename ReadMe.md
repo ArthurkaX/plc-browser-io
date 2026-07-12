@@ -125,9 +125,9 @@ for the full commissioning guide.
 The walkthrough below shows the whole flow: **adding the TCP connection by hand →
 importing the generated `.scl` → downloading to the CPU → live data exchange with the browser.**
 
-<video src="https://github.com/ArthurkaX/plc-browser-io/raw/main/img/TIA_preview.mp4" controls width="100%"></video>
+<video src="https://arthurkax.github.io/plc-browser-io/img/TIA_preview.mp4" controls width="100%"></video>
 
-> ▶️ If the player doesn't load in your Markdown viewer, [watch **TIA_preview.mp4** directly](img/TIA_preview.mp4).
+> ▶️ If the player doesn't load in your Markdown viewer, [watch **TIA_preview.mp4** directly](https://arthurkax.github.io/plc-browser-io/img/TIA_preview.mp4).
 
 ---
 
