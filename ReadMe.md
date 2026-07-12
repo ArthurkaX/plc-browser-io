@@ -46,9 +46,7 @@ Think of it as a small drop-in library, not a framework: define the two datasets
 
 Walkthrough — adding the TCP connection by hand, importing the generated `.scl`, downloading to the CPU, and live data exchange with the browser:
 
-<video src="https://arthurkax.github.io/plc-browser-io/img/TIA_preview.mp4" controls width="100%"></video>
-
-> ▶️ If the player doesn't load in your Markdown viewer, [watch **TIA_preview.mp4** directly](https://arthurkax.github.io/plc-browser-io/img/TIA_preview.mp4).
+![TIA Portal walkthrough](img/Tia_preview.gif)
 
 ---
 
