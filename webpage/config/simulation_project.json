@@ -1,6 +1,6 @@
 {
   "connection": {
-    "url": "ws://localhost:8080",
+    "url": "ws://192.168.0.2:8082",
     "txRate": 10,
     "wdTimeout": 100
   },

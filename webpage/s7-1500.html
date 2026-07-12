@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLC Browser IO · S7-1500 / TIA Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-bg"></div>
+
+    <main class="boilerplate-container">
+        <div class="empty-state">
+            <h1>PLC Browser IO</h1>
+            <p>S7-1500 / TIA Portal edition — your simulation project starts here.</p>
+            <div class="hint">Press <kbd>F9</kbd> to open the Dashboard, edit the dataset, and export <code>PLC_Browser_IO.scl</code></div>
+        </div>
+    </main>
+
+    <!-- Shared engine -->
+    <script src="plc-core.js"></script>
+    <!-- Siemens generator: fixed engine template + code generator + TIA dashboard -->
+    <script src="s7-engine-template.js"></script>
+    <script src="s7-codegen.js"></script>
+    <script src="dashboard-s7.js"></script>
+</body>
+</html>

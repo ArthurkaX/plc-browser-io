@@ -114,6 +114,23 @@ The simulation driving the IO map approach:
 
 ---
 
+## 🟥 S7-1500 / TIA Portal Support
+
+Besides CODESYS, the WebSocket server is also ported to **Siemens S7-1500**
+(TIA Portal V18, tested on **PLCSIM Advanced V5.0**) as a single import-ready
+`PLC_Browser_IO.scl`. A dedicated web page (`webpage/s7-1500.html`) generates that
+complete source from your dataset — see [`PLCSIM-Advanced-v5/README.md`](PLCSIM-Advanced-v5/README.md)
+for the full commissioning guide.
+
+The walkthrough below shows the whole flow: **adding the TCP connection by hand →
+importing the generated `.scl` → downloading to the CPU → live data exchange with the browser.**
+
+<video src="https://github.com/ArthurkaX/plc-browser-io/raw/main/img/TIA_preview.mp4" controls width="100%"></video>
+
+> ▶️ If the player doesn't load in your Markdown viewer, [watch **TIA_preview.mp4** directly](img/TIA_preview.mp4).
+
+---
+
 ## 📈 Roadmap
 
 - [x] CODESYS V3.5 WebSocket Server (Baseline)
@@ -121,7 +138,7 @@ The simulation driving the IO map approach:
 - [x] **Binary Packing Engine**: Implementation of the `BitPacked` protocol for signals.
 - [x] **10ms Cycle Optimization**: Benchmarking and jitter reduction.
 - [x] **ST Code Generator**: Exporting IO maps from JS to CODESYS Structured Text.
-- [ ] **TIA Portal Support**: Porting the WebSocket server to Siemens S7-1500 (LHTTP).
+- [x] **TIA Portal Support**: WebSocket server ported to Siemens S7-1500 (TIA V18 / PLCSIM Advanced), with a web generator that emits a complete import-ready `PLC_Browser_IO.scl`.
 
 ---
 
