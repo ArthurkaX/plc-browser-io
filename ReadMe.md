@@ -1,7 +1,5 @@
 # ⚡ PLC Browser IO
 
-[![Release](https://img.shields.io/github/v/release/ArthurkaX/plc-browser-io?include_prereleases&sort=semver)](https://github.com/ArthurkaX/plc-browser-io/releases)
-[![Downloads](https://img.shields.io/github/downloads/ArthurkaX/plc-browser-io/total)](https://github.com/ArthurkaX/plc-browser-io/releases)
 [![Stars](https://img.shields.io/github/stars/ArthurkaX/plc-browser-io?style=flat)](https://github.com/ArthurkaX/plc-browser-io/stargazers)
 [![Forks](https://badgen.net/github/forks/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/forks)
 [![Issues](https://img.shields.io/github/issues/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/issues)
