@@ -1,8 +1,10 @@
-# IEC 61131-3 Structured Text Block Syntax Reference
+# IEC 61131-3 Structured Text — Syntax Reference
 
-This document provides syntax templates for all supported IEC 61131-3 block structures, independent of project organization. Use these templates as reference when creating new blocks.
+> Part of [PLC Browser IO](../ReadMe.md). A syntax cheat-sheet for writing or generating CODESYS Structured Text blocks — not project logic.
 
-**Note:** In CODESYS, END keywords (END_FUNCTION, END_METHOD, END_PROGRAM, etc.) are optional and not used in this codebase. Block boundaries are inferred from context.
+Templates for every supported IEC 61131-3 block structure, independent of project organization. Use them as reference when creating new blocks.
+
+**Note:** In CODESYS, END keywords (`END_FUNCTION`, `END_METHOD`, `END_PROGRAM`, etc.) are optional and not used in this codebase. Block boundaries are inferred from context.
 
 ---
 

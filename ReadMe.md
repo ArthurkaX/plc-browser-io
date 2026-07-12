@@ -1,4 +1,4 @@
-# ⚡ PLC Browser IO (Simulation Bridge)
+# ⚡ PLC Browser IO
 
 [![Release](https://img.shields.io/github/v/release/ArthurkaX/plc-browser-io?include_prereleases&sort=semver)](https://github.com/ArthurkaX/plc-browser-io/releases)
 [![Downloads](https://img.shields.io/github/downloads/ArthurkaX/plc-browser-io/total)](https://github.com/ArthurkaX/plc-browser-io/releases)
@@ -8,122 +8,43 @@
 [![Last commit](https://img.shields.io/github/last-commit/ArthurkaX/plc-browser-io)](https://github.com/ArthurkaX/plc-browser-io/commits/main)
 [![License](https://img.shields.io/github/license/ArthurkaX/plc-browser-io)](LICENSE)
 
-A high-performance bridge for interconnecting Web-based process simulations with PLC (Programmable Logic Controllers) via WebSockets.
+A lightweight bridge that connects a **web page** to a **PLC** over a single WebSocket — for fast prototyping, simulation, and hardware-in-the-loop testing.
 
 **Live Demo:** [https://arthurkax.github.io/plc-browser-io/](https://arthurkax.github.io/plc-browser-io/)
 
-
 ![Preview Simulation](img/preview.gif)
 
-
-
 > [!IMPORTANT]
-> The Live Demo requires a **running WebSocket server** on the PLC side (using the included CODESYS project) to actually exchange data. Browsing the demo alone will show a "Connection Error" unless a local or remote PLC is listening.
-
-## 🎯 Project Goal
-
-The main objective is to provide a simple, lightweight, and extremely fast interface for **rapid prototyping and simulation** of industrial processes. 
-
-**Why use this bridge?**
-- **Fast & Lightweight Prototyping:** Instead of buying and setting up heavy, expensive 3D physical modeling software, you can quickly sketch the physics of your object in a web browser (using standard JavaScript, Canvas, or SVG) with zero environment overhead.
-- **Effortless Debugging:** If you are developing control logic for a moderately complex object (e.g. an elevator, a sorting conveyor, or a complex PID heating tank), you can easily simulate its mechanics and sensors in the browser while the actual algorithms run on the real/virtual PLC.
-- **HIL (Hardware-in-the-Loop) Testing:** Test and refine your PLC logic securely against a virtual environment before commissioning the real equipment.
-
-### Key Components
-
-- **Web Simulation Engine**: Vanilla JS/HTML5 for process visualization and logic.
-- **Communication Layer**: RFC 6455 WebSocket Server implemented directly inside the PLC.
-- **Data Exchange**: Binary-packed byte arrays for maximum efficiency and predictable latency.
-- **Code Generation**: Automated generation of CODESYS/TIA Portal variable declarations (ST) from JavaScript IO definitions.
+> The Live Demo needs a **running WebSocket server on the PLC side** (the included CODESYS or S7-1500 project) to actually exchange data. Without a listening PLC you'll just see a "Connection Error".
 
 ---
 
-## 🚀 Core Concepts
+## 💡 Why I Built This
 
-### Architecture Details
+PLC tooling gets clumsy the moment all you want to do is *prototype*. Sometimes you just need to sketch something and try it — and doing that through a watch table (VAT) or the IDE itself is painful.
 
-```mermaid
-flowchart LR
-    subgraph Browser["Web Browser (UI & Physics)"]
-        JS["JavaScript Engine"]
-        UI["HTML5/Canvas Dashboard"]
-        JS <--> UI
-    end
-    
-    subgraph PLC["CODESYS PLC (Logic & Control)"]
-        WS["WebSocket Server (RFC 6455)"]
-        ST["Structured Text Logic"]
-        WS <--> ST
-    end
-    
-    JS <-->|"Full-Duplex WebSocket<br/>Raw Binary UInt8Array<br/>~10ms cycle"| WS
-```
+This isn't a SCADA replacement, and I wouldn't sell it as one — but as a quick bench setup, in the right situation, it genuinely does the job. I built it for myself, as a template for my own tasks: when I need to test an algorithm, I throw together a small web UI (these days mostly with an LLM doing the typing) and test freely, instead of fighting VAT or the IDE.
 
-### 1. The Binary "Memory Image"
-
-Instead of high-overhead JSON or XML, data is exchanged as a raw `Uint8Array`. Both sides (JS and PLC) agree on a memory map.
-
-- **Data Layout**: Signals are packed sequentially into bytes.
-  - `Bool` -> 1 bit (packed into bytes) or 1 byte (simplified).
-  - `Int/Real` -> 2/4 bytes (Little Endian).
-- **JS side**: Uses standard `DataView` or specialized buffers for efficient packing.
-- **PLC side**: Accesses data via pointers or overlays (`UNION` / `STRUCT` with `AT` addresses).
-
-### 2. High-Speed Synchronization
-
-- **Target Latency**: 10ms update rate.
-- **Frequency Control**: Adjustable polling/push interval on both sides.
-- **Bidirectional**: Full-duplex communication allows simultaneous reading of inputs and writing of outputs.
-- **Performance**: Binary frames minimize CPU usage on the PLC side, leaving more cycles for control logic.
-
-### 3. "JS-First" IO Declaration & ST Generation
-
-The simulation driving the IO map approach:
-
-1.  **Define** sensors/actuators in JavaScript (e.g., `Sim.addIO('StartButton', 'BIT')`).
-2.  **Simulation logic** interacts with these variables through bitmasks or a custom `IOHandler`.
-3.  **Generate** button: Produces a Structured Text (ST) `STRUCT` where bits are packed correctly:
-    ```st
-    TYPE ST_SimulationInputs :
-    STRUCT
-        xStartButton : BIT;
-        xStopButton  : BIT;
-        _spare1      : BIT; // Auto-aligned to byte boundary
-        _spare2      : BIT;
-        _spare3      : BIT;
-        _spare4      : BIT;
-        _spare5      : BIT;
-        _spare6      : BIT;
-        iSensorValue : INT; // Starts at next byte
-    END_STRUCT
-    END_TYPE
-    ```
-4.  **Copy-Paste**: Import the type into CODESYS and use it to overlay the received buffer.
+What it really proves is this: with nothing installed beyond a PLC and a browser, you can stand up a surprisingly fast data link between the two. What you do with that link is up to your imagination.
 
 ---
 
-## 🛠 Project Structure
+## ⚙️ How It Works
 
-- `/CODESYSv3`: Implementation of the WebSocket server for CODESYS (V3.5).
-  - `FB_WebSocket_Server`: The main block handling handshakes and framing.
-  - `GVL_WebSocket`: Global variables for communication buffers.
-  - `/.project/plc-browser-io.project`: Ready-to-use sample CODESYS project binary.
-- `/webpage`: The web-based frontend.
-  - `index.html`: Dashboard for connection and monitoring.
-  - `script.js`: WebSocket client logic and data handling.
+![How it works](img/architecture.svg)
+
+You decide what to exchange — an **input dataset** and an **output dataset**. The web page generates a ready-to-import file; you drop it into your PLC project (CODESYS or TIA Portal) and it runs. Data crosses as one compact binary image over WebSocket, ~10 ms per cycle.
+
+Think of it as a small drop-in library, not a framework: define the two datasets, import one file, go.
 
 ---
 
-## 🟥 S7-1500 / TIA Portal Support
+## 🟥 Two Targets: CODESYS & S7-1500
 
-Besides CODESYS, the WebSocket server is also ported to **Siemens S7-1500**
-(TIA Portal V18, tested on **PLCSIM Advanced V5.0**) as a single import-ready
-`PLC_Browser_IO.scl`. A dedicated web page (`webpage/s7-1500.html`) generates that
-complete source from your dataset — see [`PLCSIM-Advanced-v5/README.md`](PLCSIM-Advanced-v5/README.md)
-for the full commissioning guide.
+- **CODESYS V3.5** — the original target. Ready-to-use project in [`CODESYSv3/`](CODESYSv3/).
+- **Siemens S7-1500** (TIA Portal V18, tested on PLCSIM Advanced V5.0) — a single import-ready `PLC_Browser_IO.scl`, generated from your dataset by `webpage/s7-1500.html`. Full guide: [`PLCSIM-Advanced-v5/README.md`](PLCSIM-Advanced-v5/README.md).
 
-The walkthrough below shows the whole flow: **adding the TCP connection by hand →
-importing the generated `.scl` → downloading to the CPU → live data exchange with the browser.**
+Walkthrough — adding the TCP connection by hand, importing the generated `.scl`, downloading to the CPU, and live data exchange with the browser:
 
 <video src="https://arthurkax.github.io/plc-browser-io/img/TIA_preview.mp4" controls width="100%"></video>
 
@@ -131,57 +52,63 @@ importing the generated `.scl` → downloading to the CPU → live data exchange
 
 ---
 
-## 📈 Roadmap
+## 🚦 Getting Started
 
-- [x] CODESYS V3.5 WebSocket Server (Baseline)
-- [x] Basic Web Client interface
-- [x] **Binary Packing Engine**: Implementation of the `BitPacked` protocol for signals.
-- [x] **10ms Cycle Optimization**: Benchmarking and jitter reduction.
-- [x] **ST Code Generator**: Exporting IO maps from JS to CODESYS Structured Text.
-- [x] **TIA Portal Support**: WebSocket server ported to Siemens S7-1500 (TIA V18 / PLCSIM Advanced), with a web generator that emits a complete import-ready `PLC_Browser_IO.scl`.
+1. **PLC side:** load the matching project — [`CODESYSv3/`](CODESYSv3/) for CODESYS, or follow [`PLCSIM-Advanced-v5/README.md`](PLCSIM-Advanced-v5/README.md) for S7-1500.
+2. **Web side:** serve the `webpage/` folder from a local server. Do **not** open the HTML directly (`file:///`) — browsers block local JSON reads (CORS).
+
+   **Python**
+   ```bash
+   cd webpage
+   python -m http.server 3000     # Linux: python3
+   ```
+
+   **Node.js**
+   ```bash
+   cd webpage
+   npx serve -p 3000
+   ```
+
+   **Windows quick start:** double-click `start.bat` in the project root — it finds and launches an available local server for you.
+
+3. **Connect:** open `http://localhost:3000`. The UI auto-loads `simulation_project.json` and connects to the PLC. Open `index.html` for CODESYS or `s7-1500.html` for the Siemens generator.
 
 ---
 
-## 🚦 Getting Started
+## 🗂 Repo Layout & Docs
 
-1.  **PLC Setup**: Load the project from `CODESYSv3` into your CODESYS environment (Control Win V3 or hardware).
-2.  **Web Client**: To use the WebUI and automatic config loading, you **must use a local web server**. Do not open the HTML file directly (`file:///`) as browsers block local JSON reads (CORS).
-
-    **Option A: Python (Windows / Linux)**
-    ```bash
-    cd webpage
-    # Windows:
-    python -m http.server 3000
-    # Linux:
-    python3 -m http.server 3000
-    ```
-
-    **Option B: Node.js (Universal)**
-    ```bash
-    cd webpage
-    npx serve -p 3000
-    ```
-
-    **Option C: Quick Start (Windows)**
-    Simply double-click the `start.bat` file in the project root to open an interactive menu that finds and launches an available local server automatically!
-
-3.  **Connect**: Navigate to `http://localhost:3000` in your browser. The UI will automatically load `simulation_project.json` and attempt to connect to the PLC.
+| Path | What's there |
+|------|--------------|
+| [`webpage/`](webpage/) | Web client + code generators — `index.html` (CODESYS), `s7-1500.html` (Siemens). Shared engine: `plc-core.js`. |
+| [`CODESYSv3/`](CODESYSv3/) | CODESYS WebSocket-server project. ST syntax cheat-sheet: [`CODESYSv3/rules.md`](CODESYSv3/rules.md). |
+| [`PLCSIM-Advanced-v5/`](PLCSIM-Advanced-v5/) | S7-1500 bridge (`PLC_Browser_IO.scl`) + [setup guide](PLCSIM-Advanced-v5/README.md). |
 
 ---
 
 ## 🧪 Compatibility
 
-The current implementation has been successfully tested on:
-- **CODESYS**: V3.5 SP20 Patch 1 + (32-bit) *(CODESYS Control Win V3)*
-- **Web Client**: Mozilla Firefox
+Tested on:
+- **CODESYS**: V3.5 SP20 Patch 1, 32-bit (Control Win V3)
+- **S7-1500**: TIA Portal V18 / PLCSIM Advanced V5.0
+- **Browser**: Mozilla Firefox
+
+---
+
+## 📈 Roadmap
+
+- [x] CODESYS V3.5 WebSocket server (baseline)
+- [x] Web client interface
+- [x] **Binary packing engine** — bit-packed signal protocol
+- [x] **10 ms cycle optimization** — benchmarking and jitter reduction
+- [x] **ST code generator** — export IO maps from JS to CODESYS Structured Text
+- [x] **S7-1500 / TIA Portal support** — WebSocket server ported to Siemens (TIA V18 / PLCSIM Advanced), with a web generator that emits a complete import-ready `PLC_Browser_IO.scl`
 
 ---
 
 ## 👨‍💻 Development
 
-The CODESYS source code contained in this repository is maintained in plain text (`.st` files) to allow proper version control with Git. 
-This synchronization between the plaintext source tree and the included binary project file (`CODESYSv3/.project/plc-browser-io.project`) was achieved using the [cds-text-sync](https://github.com/ArthurkaX/cds-text-sync) utility!
+The CODESYS source is kept as plain text (`.st`) for proper Git version control. Syncing between the plaintext tree and the binary project file (`CODESYSv3/.project/plc-browser-io.project`) is done with the [cds-text-sync](https://github.com/ArthurkaX/cds-text-sync) utility.
 
 ---
 
-_“Bridging the gap between modern web technologies and industrial automation.”_
+_"Bridging the gap between modern web technologies and industrial automation."_
